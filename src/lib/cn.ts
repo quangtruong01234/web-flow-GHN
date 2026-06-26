@@ -1,7 +1,10 @@
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 /**
- * Minimal className combiner. We intentionally avoid pulling in clsx/tailwind-merge
- * for this UI-only phase — a tiny join keeps the dependency surface small.
+ * Combine class names with conditional support (clsx) and Tailwind conflict
+ * resolution (tailwind-merge) — matches the main TryBuy frontend's `cn()`.
  */
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }

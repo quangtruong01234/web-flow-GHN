@@ -30,22 +30,57 @@ Use `text-ink-*` for text, `border-line` for borders, `bg-canvas` for page backg
 
 ## `cn()` helper (`src/lib/cn.ts`)
 
-Currently a minimal dependency-free join:
+Built on **clsx** (conditional classes) + **tailwind-merge** (conflict resolution),
+matching the main frontend:
 
 ```ts
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
 }
 ```
 
-- Use it for all conditional classes: `cn("rounded-lg border border-line", active && "border-brand-600")`.
-- It does **not** do Tailwind conflict resolution (no `tailwind-merge`). Don't rely on
-  "last class wins" across conflicting utilities — write non-conflicting classes, or
-  compute the single intended value.
-- If future work adds `clsx` + `tailwind-merge`, align `cn()` with the main frontend's version (see `handoff/frontend-reference.md`).
+```tsx
+// ✅ conditional + safe override (tailwind-merge keeps the last conflicting utility)
+<div className={cn("rounded-lg border border-line p-4", active && "border-brand-600", className)} />
+
+// ❌ never hand-build conditional class strings with template literals
+<div className={`rounded-lg p-4 ${active ? "border-brand-600" : ""}`} />
+```
+
+- Always pass the consumer's `className` prop through `cn()` last so callers can override.
+- Use `clsx`/`twMerge` only via `cn()` — don't import them directly in components.
+
+## Icons — lucide-react
+
+- `import { Truck } from "lucide-react"`. `size` is a **number** (`size={18}`), never a string.
+- Add `shrink-0` to icons inside buttons / flex rows so they don't distort.
+- Don't introduce another icon set.
 
 ## Reuse before creating
 
 Before writing new UI, check `src/components/ui/` (Badge, Button, Card, Icon, Input, Modal)
 and existing `features/ghn-shipping/components/`. Match existing spacing, radius, and
 token usage. If a pattern repeats in 2+ places, extract it rather than copy-paste.
+
+## Complex / accessibility-critical UI — ask to install shadcn first
+
+The current `src/components/ui/` are simple hand-rolled primitives — fine for basic
+buttons, inputs, cards, badges, and a basic modal. **Do not hand-roll** the patterns
+below (getting focus trapping, keyboard nav, and ARIA right is error-prone). When a task
+needs any of these, **stop and ask the user to install shadcn/ui** (it brings the Radix
+primitives), then build on it — do not silently `npm install` it yourself:
+
+- Dialog with proper accessibility (focus trap, `Esc`, scroll lock, ARIA)
+- Dropdown menu
+- Complex Select / Combobox
+- Calendar / date picker
+- Command palette
+- Form validation UI
+- Advanced data table (sorting/filtering/pagination/virtualization)
+
+shadcn is **not installed yet**. Setup is `npx shadcn@latest init` then
+`npx shadcn@latest add <component>` — but only after the user approves (it's a new
+dependency + config). Until then, keep using the existing primitives for simple cases.

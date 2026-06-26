@@ -22,7 +22,8 @@ task touches that area.
 ## Stack (versions matter)
 
 Next.js **15** (App Router) · React **19** · TypeScript strict · Tailwind **v3**.
-No `react-router-dom`, no Vite, no TanStack Query (yet). Do not import any of them.
+Installed libs: **@tanstack/react-query** v5 (server state) · **zustand** v5 (client state, only when justified) · **clsx** + **tailwind-merge** (via `cn()`) · **lucide-react** (icons).
+No `react-router-dom`, no Vite — do not import them. No new dependency beyond the above without asking. See `.ai/context/conventions.md`, `.ai/context/data-fetching.md`, `.ai/context/styling.md` for how to use each.
 
 - Path alias: `@/*` → `./src/*`.
 - The app lives at the **repo root**. Do not use or recreate a `web/` subfolder (the old `web/` was deleted).
@@ -58,6 +59,7 @@ No `react-router-dom`, no Vite, no TanStack Query (yet). Do not import any of th
 - Use the design tokens from `tailwind.config.ts` (`brand-*`, `ink-*`, `line`, `canvas`, `shadow-card`) — no raw hex, no random palette colors.
 - Conditional classes via `cn()` from `@/lib/cn` — not template-literal string concatenation.
 - This app is a **light** logistics console — do not port the main frontend's dark marketplace theme.
+- **Do not hand-roll** accessibility-critical / complex UI (accessible Dialog, Dropdown menu, complex Select/Combobox, Calendar/date picker, Command palette, Form-validation UI, advanced Data table) — **ask the user to install shadcn/ui first**, then build on it.
 - Details → `.ai/context/styling.md`.
 
 ## TypeScript — hard rules

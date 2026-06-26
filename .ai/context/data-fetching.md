@@ -58,10 +58,75 @@ translated to Next conventions:
 
 Put the client in `src/lib/` (e.g. `src/lib/api.ts`). Keep it the single place that calls `fetch`.
 
+## TanStack Query v5 — server state (installed)
+
+`@tanstack/react-query` v5 is installed. It is the **only** way to fetch/cache server
+state once APIs are connected. Patterns mirror the main frontend.
+
+**Provider (wire once, in a client component before first use — e.g. Prompt 3):**
+
+```ts
+// src/lib/queryClient.ts
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 1000 * 60, retry: 1, refetchOnWindowFocus: false },
+  },
+});
+```
+
+Wrap the app in `<QueryClientProvider client={queryClient}>` via a `"use client"`
+provider mounted in `src/app/layout.tsx` (alongside the existing context providers).
+
+**Query keys — centralize, never inline `['shipments']`:**
+
+```ts
+// src/hooks/queryKeys.ts
+export const queryKeys = {
+  auth: { me: ["auth", "me"] as const },
+  shipments: {
+    all: ["shipments"] as const,
+    list: (params: ShipmentParams) => ["shipments", "list", params] as const,
+    detail: (orderId: string) => ["shipments", orderId] as const,
+    history: (orderId: string) => ["shipments", orderId, "history"] as const,
+  },
+};
+```
+
+> Note: `Shipment.orderId` is a **string** here (not a numeric id like the main frontend's products) — keep query keys typed as `string`.
+
+**useQuery / useMutation:**
+
+```ts
+export function useShipment(orderId: string) {
+  return useQuery({
+    queryKey: queryKeys.shipments.detail(orderId),
+    queryFn: () => api.shipments.getById(orderId),
+    enabled: Boolean(orderId),         // guard empty param
+  });
+}
+
+export function useSyncShipment() {
+  return useMutation({
+    mutationFn: (orderId: string) => api.shipments.sync(orderId),
+    onSuccess: (_data, orderId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.shipments.detail(orderId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.shipments.history(orderId) });
+    },
+  });
+}
+```
+
+**Hard rules:**
+
+- ❌ NO `useState` + `useEffect` to fetch server data. ❌ NO `fetch()` in components — use the `api` client.
+- Mutations use **`isPending`**, not `isLoading` (v5).
+- Always use the `queryKeys.*` factory; invalidate related keys in `onSuccess`.
+- Server state lives in Query, never in a Zustand store or Context.
+- This is the standard for when APIs connect (read-only list/detail/history → sync). In the **current mock phase**, screens still read mock data — don't wire Query to shipment endpoints until that step.
+
 ## Notes
 
-- No TanStack Query is installed. Do **not** add it without asking. When server state
-  arrives, the main frontend's React Query patterns are the reference, but adopting them
-  is a separate, approved step.
 - Prefer fetching in server components where possible once APIs are connected; auth `/me`
-  hydration runs client-side via `AuthContext`.
+  hydration runs client-side via `AuthContext` + a `me` query.
