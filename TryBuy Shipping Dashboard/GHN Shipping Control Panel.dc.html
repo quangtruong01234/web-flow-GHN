@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,-50..0" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Public Sans',system-ui,sans-serif; color:#0f172a; background:#f6f7f9; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:#d6dae1; border-radius:8px; border:2px solid #f6f7f9; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes shimmer { 0%{background-position:-700px 0;} 100%{background-position:700px 0;} }
+  @keyframes toastIn { from{opacity:0;transform:translateY(10px) scale(.98);} to{opacity:1;transform:none;} }
+  @keyframes overlayIn { from{opacity:0;} to{opacity:1;} }
+  @keyframes panelIn { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:none;} }
+</style>
+</helmet>
+
+<!-- ================= LOGIN ================= -->
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1200px 600px at 50% -10%,#eef1ff 0%,#f6f7f9 55%);">
+  <div style="width:100%;max-width:404px;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;">
+      <div style="width:34px;height:34px;border-radius:9px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px;">T</div>
+      <span style="font-weight:800;font-size:20px;letter-spacing:-.01em;">TryBuy</span>
+    </div>
+    <div style="background:#fff;border:1px solid #e7e9ee;border-radius:16px;box-shadow:0 8px 30px rgba(16,24,40,.06);padding:30px 28px;">
+      <div style="display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;background:#eef2ff;color:#4f46e5;font-size:12px;font-weight:600;margin-bottom:14px;">
+        <span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;">local_shipping</span> Logistics Console
+      </div>
+      <h1 style="margin:0 0 4px;font-size:23px;font-weight:800;letter-spacing:-.02em;">Shipping Admin</h1>
+      <p style="margin:0 0 22px;color:#667085;font-size:14px;">Sign in to manage GHN shipments.</p>
+      <label style="display:block;font-size:13px;font-weight:600;color:#344054;margin-bottom:6px;">Email or username</label>
+      <input value="{{ email }}" onInput="{{ onEmail }}" placeholder="operator@trybuy.vn" style="width:100%;padding:10px 13px;border:1px solid #e7e9ee;border-radius:10px;font:inherit;font-size:14px;background:#fff;outline:none;margin-bottom:15px;" />
+      <label style="display:block;font-size:13px;font-weight:600;color:#344054;margin-bottom:6px;">Password</label>
+      <input value="{{ password }}" onInput="{{ onPassword }}" type="password" placeholder="••••••••••" style="width:100%;padding:10px 13px;border:1px solid #e7e9ee;border-radius:10px;font:inherit;font-size:14px;background:#fff;outline:none;margin-bottom:20px;" />
+      <button onClick="{{ doLogin }}" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border:none;border-radius:10px;background:#4f46e5;color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;">Sign in <span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">arrow_forward</span></button>
+      <div style="margin-top:16px;padding:10px 12px;border:1px dashed #e2e5ea;border-radius:10px;background:#fafbfc;font-size:12px;color:#98a2b3;">
+        <span style="font-weight:600;color:#667085;">Demo:</span> any email + password works — credentials are not validated in this prototype.
+      </div>
+    </div>
+    <p style="text-align:center;margin:16px 0 0;font-size:12.5px;color:#98a2b3;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;">lock</span> Authorized logistics operators only
+    </p>
+  </div>
+</div>
+</sc-if>
+
+<!-- ================= APP SHELL ================= -->
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;min-height:100vh;">
+
+  <!-- Sidebar -->
+  <aside style="width:248px;flex:none;background:#fff;border-right:1px solid #e7e9ee;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;">
+    <div style="padding:18px 18px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f1f4;">
+      <div style="width:30px;height:30px;border-radius:8px;background:#4f46e5;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;">T</div>
+      <div>
+        <div style="font-weight:800;font-size:15px;letter-spacing:-.01em;line-height:1.1;">TryBuy</div>
+        <div style="font-size:11px;color:#98a2b3;font-weight:600;">Shipping Admin</div>
+      </div>
+    </div>
+    <div style="padding:12px 10px;flex:1;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#b6bcc7;text-transform:uppercase;padding:4px 10px 8px;">Operations</div>
+      <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="5">
+        <button onClick="{{ item.onClick }}" style="{{ item.style }}">
+          <span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;font-variation-settings:'FILL' 0;">{{ item.icon }}</span>
+          <span style="flex:1;text-align:left;">{{ item.label }}</span>
+          <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ true }}"><span style="font-size:11px;font-weight:700;color:#ea580c;background:#fff7ed;border:1px solid #fed7aa;padding:1px 7px;border-radius:999px;">{{ item.badge }}</span></sc-if>
+        </button>
+      </sc-for>
+    </div>
+    <div style="padding:12px;border-top:1px solid #f0f1f4;">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:#f7f8fa;">
+        <div style="width:32px;height:32px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;">TM</div>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:13px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Trần Thị Mai</div>
+          <div style="font-size:11px;color:#98a2b3;">Shipping Manager</div>
+        </div>
+        <button onClick="{{ doLogout }}" title="Sign out" style="border:none;background:none;cursor:pointer;color:#98a2b3;display:flex;padding:4px;"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;">logout</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main column -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+
+    <!-- Topbar -->
+    <header style="height:64px;flex:none;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-bottom:1px solid #e7e9ee;display:flex;align-items:center;gap:16px;padding:0 24px;position:sticky;top:0;z-index:30;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;color:#98a2b3;font-size:12px;font-weight:600;">{{ pageBreadcrumb }}</div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.02em;line-height:1.1;">{{ pageTitle }}</div>
+      </div>
+
+      <!-- demo states -->
+      <div style="position:relative;">
+        <button onClick="{{ toggleDemo }}" style="display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#475467;font:inherit;font-size:13px;font-weight:600;cursor:pointer;">
+          <span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#4f46e5;">science</span> Prototype states
+          <span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">expand_more</span>
+        </button>
+        <sc-if value="{{ demoOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;right:0;top:46px;width:230px;background:#fff;border:1px solid #e7e9ee;border-radius:12px;box-shadow:0 12px 34px rgba(16,24,40,.12);padding:6px;z-index:40;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#b6bcc7;padding:8px 10px 4px;">Demo screen states</div>
+          <sc-for list="{{ demoItems }}" as="d" hint-placeholder-count="6">
+            <button onClick="{{ d.onClick }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px 10px;border:none;background:none;border-radius:8px;cursor:pointer;font:inherit;font-size:13px;color:#344054;text-align:left;" onMouseOver="{{ hoverIn }}" onMouseOut="{{ hoverOut }}">
+              <span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#98a2b3;">{{ d.icon }}</span>{{ d.label }}
+            </button>
+          </sc-for>
+        </div>
+        </sc-if>
+      </div>
+
+      <button title="Notifications" style="position:relative;border:1px solid #e7e9ee;background:#fff;border-radius:9px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#475467;">
+        <span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;">notifications</span>
+        <span style="position:absolute;top:8px;right:9px;width:7px;height:7px;background:#dc2626;border-radius:50%;border:1.5px solid #fff;"></span>
+      </button>
+
+      <div style="width:1px;height:30px;background:#e7e9ee;"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="text-align:right;line-height:1.15;">
+          <div style="font-size:13px;font-weight:700;">Trần Thị Mai</div>
+          <div style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#4f46e5;background:#eef2ff;padding:1px 8px;border-radius:999px;margin-top:2px;"><span style="width:5px;height:5px;border-radius:50%;background:#4f46e5;"></span>Logistics Operator</div>
+        </div>
+        <div style="width:36px;height:36px;border-radius:50%;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">TM</div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main style="flex:1;padding:24px;max-width:1500px;width:100%;">
+
+      <!-- ===== DASHBOARD ===== -->
+      <sc-if value="{{ showDashboard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:16px 18px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="font-size:13px;font-weight:600;color:#667085;">{{ s.label }}</span>
+                <span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;{{ s.iconWrap }}"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">{{ s.icon }}</span></span>
+              </div>
+              <div style="font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1;">{{ s.value }}</div>
+              <div style="margin-top:7px;font-size:12px;color:#98a2b3;">{{ s.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start;">
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);">
+            <div style="padding:16px 20px;border-bottom:1px solid #f0f1f4;display:flex;align-items:center;justify-content:space-between;">
+              <div style="font-weight:700;font-size:15px;">Recent shipments</div>
+              <button onClick="{{ goOrders }}" style="border:none;background:none;color:#4f46e5;font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;">View all <span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;">chevron_right</span></button>
+            </div>
+            <sc-for list="{{ recent }}" as="o" hint-placeholder-count="5">
+              <button onClick="{{ o.open }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:13px 20px;border:none;border-bottom:1px solid #f4f5f7;background:none;cursor:pointer;text-align:left;font:inherit;">
+                <div style="min-width:0;flex:1;">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;">{{ o.id }}</div>
+                  <div style="font-size:12px;color:#98a2b3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ o.product }}</div>
+                </div>
+                <span style="{{ o.ghnBadgeStyle }}"><span style="{{ o.ghnDotStyle }}"></span>{{ o.ghnLabel }}</span>
+                <span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#cbd2db;">chevron_right</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:18px 20px;">
+            <div style="font-weight:700;font-size:15px;margin-bottom:14px;">Status distribution</div>
+            <sc-for list="{{ distribution }}" as="d" hint-placeholder-count="5">
+              <div style="margin-bottom:13px;">
+                <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="color:#475467;font-weight:600;">{{ d.label }}</span><span style="color:#98a2b3;">{{ d.value }}</span></div>
+                <div style="height:7px;border-radius:999px;background:#f1f3f6;overflow:hidden;"><div style="{{ d.barStyle }}"></div></div>
+              </div>
+            </sc-for>
+            <div style="margin-top:18px;padding-top:16px;border-top:1px solid #f0f1f4;display:flex;align-items:center;gap:10px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px #dcfce7;"></span>
+              <div style="font-size:12.5px;color:#475467;"><span style="font-weight:700;color:#0f172a;">GHN webhook connected</span> · last event 3 min ago</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== ORDERS LIST ===== -->
+      <sc-if value="{{ showOrders }}" hint-placeholder-val="{{ true }}">
+        <!-- stat cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px;">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="5">
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:15px 17px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+                <span style="font-size:12.5px;font-weight:600;color:#667085;">{{ s.label }}</span>
+                <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;{{ s.iconWrap }}"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">{{ s.icon }}</span></span>
+              </div>
+              <div style="font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1;">{{ s.value }}</div>
+              <div style="margin-top:6px;font-size:11.5px;color:#98a2b3;">{{ s.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- filter bar -->
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:14px 16px;margin-bottom:16px;">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <div style="position:relative;flex:1;min-width:240px;">
+              <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#98a2b3;">search</span>
+              <input value="{{ search }}" onInput="{{ onSearch }}" placeholder="Search by Order ID or GHN code…" style="width:100%;padding:9px 12px 9px 38px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" />
+            </div>
+            <div style="position:relative;">
+              <select value="{{ ghnFilter }}" onChange="{{ onGhn }}" style="appearance:none;padding:9px 34px 9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fff;color:#344054;cursor:pointer;outline:none;">
+                <sc-for list="{{ ghnOptions }}" as="opt" hint-placeholder-count="4"><option value="{{ opt.value }}">{{ opt.label }}</option></sc-for>
+              </select>
+              <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#98a2b3;pointer-events:none;">expand_more</span>
+            </div>
+            <div style="position:relative;">
+              <select value="{{ localFilter }}" onChange="{{ onLocal }}" style="appearance:none;padding:9px 34px 9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fff;color:#344054;cursor:pointer;outline:none;">
+                <sc-for list="{{ localOptions }}" as="opt" hint-placeholder-count="4"><option value="{{ opt.value }}">{{ opt.label }}</option></sc-for>
+              </select>
+              <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#98a2b3;pointer-events:none;">expand_more</span>
+            </div>
+            <input value="{{ dateFrom }}" onInput="{{ onFrom }}" type="date" style="padding:8px 11px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13px;color:#475467;background:#fff;outline:none;" />
+            <span style="color:#cbd2db;font-size:13px;">→</span>
+            <input value="{{ dateTo }}" onInput="{{ onTo }}" type="date" style="padding:8px 11px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13px;color:#475467;background:#fff;outline:none;" />
+            <button onClick="{{ toggleFailed }}" style="{{ failedToggleStyle }}">
+              <span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">{{ failedToggleIcon }}</span> Only failed
+            </button>
+            <button onClick="{{ doRefresh }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid #4f46e5;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">
+              <span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;{{ refreshSpin }}">sync</span> Refresh
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:11px;border-top:1px solid #f4f5f7;">
+            <div style="font-size:12.5px;color:#98a2b3;">{{ resultLabel }}</div>
+            <button onClick="{{ clearFilters }}" style="border:none;background:none;color:#667085;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;">close</span> Clear filters</button>
+          </div>
+        </div>
+
+        <!-- table -->
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+          <div style="overflow-x:auto;">
+            <div style="min-width:1180px;">
+              <!-- header row -->
+              <div style="display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1.1fr .9fr 1.1fr 1fr .9fr .9fr 96px;gap:12px;padding:12px 20px;background:#fafbfc;border-bottom:1px solid #eef0f3;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#98a2b3;">
+                <div>Order ID</div><div>GHN Code</div><div>Buyer</div><div>Seller</div><div>Local</div><div>GHN Status</div><div>COD</div><div>Fee</div><div>Synced</div><div style="text-align:right;">Actions</div>
+              </div>
+
+              <!-- DATA -->
+              <sc-if value="{{ tableData }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ decorated }}" as="o" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1.1fr .9fr 1.1fr 1fr .9fr .9fr 96px;gap:12px;padding:13px 20px;border-bottom:1px solid #f4f5f7;align-items:center;font-size:13px;" onMouseOver="{{ rowIn }}" onMouseOut="{{ rowOut }}">
+                    <div><button onClick="{{ o.open }}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#4f46e5;border:none;background:none;cursor:pointer;padding:0;">{{ o.id }}</button><div style="font-size:11px;color:#b6bcc7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">{{ o.product }}</div></div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#475467;">{{ o.ghnCode }}</div>
+                    <div style="min-width:0;"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ o.buyer }}</div></div>
+                    <div style="color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ o.seller }}</div>
+                    <div><span style="{{ o.localBadgeStyle }}"><span style="{{ o.localDotStyle }}"></span>{{ o.localLabel }}</span></div>
+                    <div><span style="{{ o.ghnBadgeStyle }}"><span style="{{ o.ghnDotStyle }}"></span>{{ o.ghnLabel }}</span></div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;">{{ o.codDisplay }}</div>
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#667085;">{{ o.feeFmt }}</div>
+                    <div style="font-size:12px;color:#98a2b3;">{{ o.lastSynced }}</div>
+                    <div style="display:flex;gap:2px;justify-content:flex-end;">
+                      <button onClick="{{ o.open }}" title="View detail" style="border:none;background:none;cursor:pointer;color:#667085;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;" onMouseOver="{{ iconBtnIn }}" onMouseOut="{{ iconBtnOut }}"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;">visibility</span></button>
+                      <button onClick="{{ o.quickSync }}" title="Sync status" style="border:none;background:none;cursor:pointer;color:#667085;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;" onMouseOver="{{ iconBtnIn }}" onMouseOut="{{ iconBtnOut }}"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;">sync</span></button>
+                      <button onClick="{{ o.open }}" title="More actions" style="border:none;background:none;cursor:pointer;color:#667085;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;" onMouseOver="{{ iconBtnIn }}" onMouseOut="{{ iconBtnOut }}"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;">more_horiz</span></button>
+                    </div>
+                  </div>
+                </sc-for>
+              </sc-if>
+
+              <!-- LOADING -->
+              <sc-if value="{{ tableLoading }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ skeletonRows }}" as="r" hint-placeholder-count="6">
+                  <div style="display:grid;grid-template-columns:1.1fr 1fr 1.2fr 1.1fr .9fr 1.1fr 1fr .9fr .9fr 96px;gap:12px;padding:16px 20px;border-bottom:1px solid #f4f5f7;align-items:center;">
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:18px;width:70px;border-radius:999px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:18px;width:80px;border-radius:999px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                    <div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#f1f3f6 25%,#e9ecf1 37%,#f1f3f6 63%);background-size:700px 100%;animation:shimmer 1.4s infinite;"></div>
+                  </div>
+                </sc-for>
+              </sc-if>
+
+              <!-- EMPTY -->
+              <sc-if value="{{ tableEmpty }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:64px 24px;text-align:center;">
+                  <div style="width:60px;height:60px;border-radius:16px;background:#f4f5f7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><span style="font-family:'Material Symbols Rounded';font-size:30px;line-height:1;color:#b6bcc7;">inbox</span></div>
+                  <div style="font-size:16px;font-weight:700;margin-bottom:5px;">No shipments found</div>
+                  <div style="font-size:13.5px;color:#98a2b3;max-width:340px;margin:0 auto 18px;">No orders match your current filters. Try adjusting the search, status, or date range.</div>
+                  <button onClick="{{ clearFilters }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">restart_alt</span> Reset filters</button>
+                </div>
+              </sc-if>
+
+              <!-- ERROR -->
+              <sc-if value="{{ tableError }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:60px 24px;text-align:center;">
+                  <div style="width:60px;height:60px;border-radius:16px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><span style="font-family:'Material Symbols Rounded';font-size:30px;line-height:1;color:#dc2626;">cloud_off</span></div>
+                  <div style="font-size:16px;font-weight:700;margin-bottom:5px;">Couldn't reach GHN</div>
+                  <div style="font-size:13.5px;color:#98a2b3;max-width:380px;margin:0 auto 6px;">The GHN sync service returned an error (503). Shipment data may be out of date.</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#cbd2db;margin-bottom:18px;">request_id: ghn_sync_8f21ac · 2026-06-26 11:58</div>
+                  <button onClick="{{ doRefresh }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:1px solid #4f46e5;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">refresh</span> Retry sync</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== ORDER DETAIL ===== -->
+      <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ goOrders }}" style="display:inline-flex;align-items:center;gap:6px;border:none;background:none;color:#667085;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:16px;padding:0;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">arrow_back</span> Back to shipments</button>
+
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:18px;">
+          <h2 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;font-family:'IBM Plex Mono',monospace;">{{ order.id }}</h2>
+          <span style="{{ order.localBadgeStyle }}"><span style="{{ order.localDotStyle }}"></span>{{ order.localLabel }}</span>
+          <span style="{{ order.ghnBadgeStyle }}"><span style="{{ order.ghnDotStyle }}"></span>{{ order.ghnLabel }}</span>
+          <div style="flex:1;"></div>
+          <button onClick="{{ order.openSync }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid #4f46e5;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">sync</span> Sync GHN status</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start;">
+          <!-- left column -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- A summary -->
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">receipt_long</span> Order summary</div>
+                <div style="font-size:12px;color:#98a2b3;display:flex;align-items:center;gap:5px;"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;">schedule</span> Last synced {{ order.lastSynced }}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 12px;">
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">ORDER ID</div><div style="font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;">{{ order.id }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">GHN ORDER CODE</div><div style="font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;">{{ order.ghnCode }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">CREATED</div><div style="font-size:13.5px;">{{ order.created }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">PRODUCT</div><div style="font-size:13.5px;">{{ order.product }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">LOCAL STATUS</div><div><span style="{{ order.localBadgeStyle }}"><span style="{{ order.localDotStyle }}"></span>{{ order.localLabel }}</span></div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:3px;">GHN STATUS</div><div><span style="{{ order.ghnBadgeStyle }}"><span style="{{ order.ghnDotStyle }}"></span>{{ order.ghnLabel }}</span></div></div>
+              </div>
+            </div>
+
+            <!-- B receiver + C payment side by side -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+                <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:14px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">person_pin_circle</span> Receiver</div>
+                <div style="display:flex;flex-direction:column;gap:11px;">
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;">Name</span><span style="font-size:13px;font-weight:600;text-align:right;">{{ order.receiver.name }}</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;">Phone</span><span style="font-size:13px;font-family:'IBM Plex Mono',monospace;">{{ order.receiver.phone }}</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;flex:none;">Address</span><span style="font-size:13px;text-align:right;">{{ order.receiver.address }}</span></div>
+                  <div style="height:1px;background:#f0f1f4;"></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;">Ward</span><span style="font-size:13px;text-align:right;">{{ order.receiver.ward }}</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;">District</span><span style="font-size:13px;text-align:right;">{{ order.receiver.district }}</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;"><span style="font-size:12.5px;color:#98a2b3;">Province</span><span style="font-size:13px;text-align:right;">{{ order.receiver.province }}</span></div>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+                <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:14px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">payments</span> Payment &amp; COD</div>
+                <div style="display:flex;flex-direction:column;gap:11px;">
+                  <div style="display:flex;justify-content:space-between;"><span style="font-size:12.5px;color:#98a2b3;">Order total</span><span style="font-size:13px;font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ order.totalFmt }}</span></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12.5px;color:#98a2b3;">COD to collect</span><span style="font-size:14px;font-family:'IBM Plex Mono',monospace;font-weight:700;{{ order.codColor }}">{{ order.codDisplay }}</span></div>
+                  <div style="display:flex;justify-content:space-between;"><span style="font-size:12.5px;color:#98a2b3;">Shipping fee</span><span style="font-size:13px;font-family:'IBM Plex Mono',monospace;">{{ order.feeFmt }}</span></div>
+                  <div style="height:1px;background:#f0f1f4;"></div>
+                  <div style="display:flex;justify-content:space-between;"><span style="font-size:12.5px;color:#98a2b3;">Method</span><span style="font-size:13px;text-align:right;">{{ order.payment.method }}</span></div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12.5px;color:#98a2b3;">Payment status</span><span style="{{ order.payBadgeStyle }}">{{ order.payLabel }}</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- D GHN detail -->
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+              <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:16px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">local_shipping</span> GHN shipment detail</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 12px;">
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">CURRENT GHN STATUS</div><div><span style="{{ order.ghnBadgeStyle }}"><span style="{{ order.ghnDotStyle }}"></span>{{ order.ghnLabel }}</span></div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">EXPECTED DELIVERY</div><div style="font-size:13.5px;">{{ order.ghn.expected }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">PICK SHIFT</div><div style="font-size:13.5px;">{{ order.ghn.pickShift }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">WEIGHT</div><div style="font-size:13.5px;">{{ order.ghn.weight }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">SERVICE TYPE</div><div style="font-size:13.5px;">{{ order.ghn.service }}</div></div>
+                <div><div style="font-size:11.5px;color:#98a2b3;font-weight:600;margin-bottom:4px;">TRACKING</div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4f46e5;">{{ order.ghnCode }}</div></div>
+              </div>
+              <sc-if value="{{ order.hasFail }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top:16px;display:flex;gap:10px;padding:12px 14px;border-radius:11px;background:#fef2f2;border:1px solid #fee2e2;">
+                  <span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#dc2626;flex:none;">error</span>
+                  <div><div style="font-size:12.5px;font-weight:700;color:#991b1b;margin-bottom:2px;">Failed delivery reason</div><div style="font-size:12.5px;color:#b42318;">{{ order.ghn.failReason }}</div></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ order.hasReturn }}" hint-placeholder-val="{{ true }}">
+                <div style="margin-top:12px;display:flex;gap:10px;padding:12px 14px;border-radius:11px;background:#fff7ed;border:1px solid #fed7aa;">
+                  <span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#ea580c;flex:none;">assignment_return</span>
+                  <div><div style="font-size:12.5px;font-weight:700;color:#9a3412;margin-bottom:2px;">Return reason</div><div style="font-size:12.5px;color:#c2410c;">{{ order.ghn.returnReason }}</div></div>
+                </div>
+              </sc-if>
+            </div>
+
+            <!-- F timeline -->
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+              <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:18px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">timeline</span> Shipping history</div>
+              <div style="position:relative;padding-left:6px;">
+                <sc-for list="{{ order.timeline }}" as="t" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:26px 1fr;gap:14px;padding-bottom:18px;position:relative;">
+                    <div style="display:flex;flex-direction:column;align-items:center;">
+                      <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;{{ t.iconWrap }}"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;">{{ t.icon }}</span></div>
+                      <div style="{{ t.lineStyle }}"></div>
+                    </div>
+                    <div style="padding-top:1px;">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:13.5px;font-weight:700;">{{ t.action }}</span>
+                        <span style="{{ t.resultStyle }}">{{ t.resultLabel }}</span>
+                      </div>
+                      <sc-if value="{{ t.hasChange }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;align-items:center;gap:7px;margin-top:5px;font-size:12px;">
+                          <span style="font-family:'IBM Plex Mono',monospace;color:#98a2b3;background:#f4f5f7;padding:1px 7px;border-radius:5px;">{{ t.old }}</span>
+                          <span style="font-family:'Material Symbols Rounded';font-size:14px;line-height:1;color:#cbd2db;">arrow_forward</span>
+                          <span style="font-family:'IBM Plex Mono',monospace;color:#4f46e5;background:#eef2ff;padding:1px 7px;border-radius:5px;">{{ t.new }}</span>
+                        </div>
+                      </sc-if>
+                      <div style="margin-top:6px;font-size:11.5px;color:#98a2b3;display:flex;align-items:center;gap:6px;"><span style="display:inline-flex;align-items:center;gap:3px;"><span style="font-family:'Material Symbols Rounded';font-size:13px;line-height:1;">{{ t.actorIcon }}</span>{{ t.actor }}</span> · {{ t.time }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <!-- right column: actions -->
+          <div style="position:sticky;top:88px;display:flex;flex-direction:column;gap:16px;">
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;">
+              <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;color:#4f46e5;">bolt</span> Shipping actions</div>
+              <p style="margin:0 0 16px;font-size:12px;color:#98a2b3;line-height:1.45;">Only actions valid for the current GHN status are enabled. GHN status itself can't be set manually — it updates via sync &amp; webhooks.</p>
+              <div style="display:flex;flex-direction:column;gap:9px;">
+                <sc-for list="{{ order.actions }}" as="a" hint-placeholder-count="6">
+                  <div>
+                    <button onClick="{{ a.onClick }}" disabled="{{ a.disabled }}" style="{{ a.btnStyle }}">
+                      <span style="font-family:'Material Symbols Rounded';font-size:19px;line-height:1;">{{ a.icon }}</span>
+                      <span style="flex:1;text-align:left;">{{ a.label }}</span>
+                      <sc-if value="{{ a.enabled }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;opacity:.5;">chevron_right</span></sc-if>
+                      <sc-if value="{{ a.disabled }}" hint-placeholder-val="{{ true }}"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;opacity:.6;">lock</span></sc-if>
+                    </button>
+                    <sc-if value="{{ a.disabled }}" hint-placeholder-val="{{ true }}"><div style="font-size:11px;color:#b6bcc7;padding:4px 4px 2px;display:flex;align-items:center;gap:5px;"><span style="font-family:'Material Symbols Rounded';font-size:13px;line-height:1;">info</span>{{ a.reason }}</div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:18px 20px;">
+              <div style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#98a2b3;margin-bottom:12px;">Product</div>
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div style="width:56px;height:56px;border-radius:10px;flex:none;background-image:repeating-linear-gradient(45deg,#f1f3f6,#f1f3f6 6px,#fafbfc 6px,#fafbfc 12px);border:1px solid #eef0f3;display:flex;align-items:center;justify-content:center;"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#b6bcc7;text-align:center;">product<br>shot</span></div>
+                <div style="min-width:0;"><div style="font-size:13.5px;font-weight:600;">{{ order.product }}</div><div style="font-size:12px;color:#98a2b3;">Sold by {{ order.seller }}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== GHN SYNC ===== -->
+      <sc-if value="{{ showSync }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;">
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:18px 20px;">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;"><span style="width:9px;height:9px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px #dcfce7;"></span><span style="font-size:13px;font-weight:600;color:#667085;">Webhook connection</span></div>
+            <div style="font-size:18px;font-weight:800;">Connected</div><div style="font-size:12px;color:#98a2b3;margin-top:4px;">Last event received 3 min ago</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:18px 20px;">
+            <div style="font-size:13px;font-weight:600;color:#667085;margin-bottom:10px;">Pending sync</div>
+            <div style="font-size:18px;font-weight:800;">12 shipments</div><div style="font-size:12px;color:#98a2b3;margin-top:4px;">Not synced in last 30 min</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:18px 20px;">
+            <div style="font-size:13px;font-weight:600;color:#667085;margin-bottom:10px;">Last full sync</div>
+            <div style="font-size:18px;font-weight:800;">11:58 AM</div><div style="font-size:12px;color:#98a2b3;margin-top:4px;">Today · by system scheduler</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+          <div style="padding:16px 20px;border-bottom:1px solid #f0f1f4;display:flex;align-items:center;justify-content:space-between;">
+            <div><div style="font-weight:700;font-size:15px;">Recent sync results</div><div style="font-size:12.5px;color:#98a2b3;margin-top:2px;">GHN status pulled per shipment</div></div>
+            <button onClick="{{ doRefresh }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid #4f46e5;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;{{ refreshSpin }}">sync</span> Sync all pending</button>
+          </div>
+          <sc-for list="{{ syncRows }}" as="o" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr 1fr 110px;gap:12px;padding:13px 20px;border-bottom:1px solid #f4f5f7;align-items:center;font-size:13px;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ o.id }}</div>
+              <div style="font-family:'IBM Plex Mono',monospace;color:#475467;font-size:12.5px;">{{ o.ghnCode }}</div>
+              <div><span style="{{ o.ghnBadgeStyle }}"><span style="{{ o.ghnDotStyle }}"></span>{{ o.ghnLabel }}</span></div>
+              <div style="font-size:12px;color:#98a2b3;">{{ o.lastSynced }}</div>
+              <div style="text-align:right;"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#16a34a;"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;">check_circle</span> Synced</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ===== ACTION HISTORY ===== -->
+      <sc-if value="{{ showHistory }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden;">
+          <div style="padding:16px 20px;border-bottom:1px solid #f0f1f4;"><div style="font-weight:700;font-size:15px;">Action history</div><div style="font-size:12.5px;color:#98a2b3;margin-top:2px;">Audit log of all operator &amp; system actions</div></div>
+          <div style="display:grid;grid-template-columns:160px 1fr 1.1fr 1fr 130px;gap:12px;padding:11px 20px;background:#fafbfc;border-bottom:1px solid #eef0f3;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#98a2b3;">
+            <div>Order</div><div>Action</div><div>Status change</div><div>Actor</div><div style="text-align:right;">When</div>
+          </div>
+          <sc-for list="{{ auditLog }}" as="a" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:160px 1fr 1.1fr 1fr 130px;gap:12px;padding:13px 20px;border-bottom:1px solid #f4f5f7;align-items:center;font-size:13px;">
+              <button onClick="{{ a.open }}" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:#4f46e5;border:none;background:none;cursor:pointer;text-align:left;padding:0;">{{ a.orderId }}</button>
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;color:#98a2b3;">{{ a.icon }}</span><span style="font-weight:600;">{{ a.action }}</span> <span style="{{ a.resultStyle }}">{{ a.resultLabel }}</span></div>
+              <div>
+                <sc-if value="{{ a.hasChange }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:6px;font-size:11.5px;"><span style="font-family:'IBM Plex Mono',monospace;color:#98a2b3;background:#f4f5f7;padding:1px 6px;border-radius:5px;">{{ a.old }}</span><span style="font-family:'Material Symbols Rounded';font-size:13px;line-height:1;color:#cbd2db;">arrow_forward</span><span style="font-family:'IBM Plex Mono',monospace;color:#4f46e5;background:#eef2ff;padding:1px 6px;border-radius:5px;">{{ a.new }}</span></div></sc-if>
+                <sc-if value="{{ a.noChange }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;color:#cbd2db;">—</span></sc-if>
+              </div>
+              <div style="font-size:12.5px;color:#475467;display:flex;align-items:center;gap:6px;"><span style="font-family:'Material Symbols Rounded';font-size:14px;line-height:1;color:#98a2b3;">{{ a.actorIcon }}</span>{{ a.actor }}</div>
+              <div style="text-align:right;font-size:12px;color:#98a2b3;">{{ a.time }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ===== SETTINGS ===== -->
+      <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ true }}">
+        <div style="max-width:680px;display:flex;flex-direction:column;gap:16px;">
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:22px;">
+            <div style="font-weight:700;font-size:15px;margin-bottom:3px;">GHN integration</div>
+            <div style="font-size:12.5px;color:#98a2b3;margin-bottom:18px;">Connection used to create orders and pull shipping status.</div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">GHN Shop ID</label><input value="194562" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:#fbfbfc;outline:none;" /></div>
+              <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">API token</label><input value="••••••••••••••••3f2a" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:#fbfbfc;outline:none;color:#98a2b3;" /></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Default service</label><input value="Standard" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+                <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Pickup warehouse</label><input value="Kho Quận 7, HCM" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+              </div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #e7e9ee;border-radius:14px;box-shadow:0 1px 2px rgba(16,24,40,.04);padding:22px;">
+            <div style="font-weight:700;font-size:15px;margin-bottom:16px;">Webhook &amp; sync</div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Webhook URL</label><input value="https://admin.trybuy.vn/api/ghn/webhook" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13px;font-family:'IBM Plex Mono',monospace;background:#fbfbfc;outline:none;" /></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid #f0f1f4;border-radius:11px;background:#fafbfc;"><div><div style="font-size:13.5px;font-weight:600;">Auto-sync every 30 minutes</div><div style="font-size:12px;color:#98a2b3;">Background job pulls status for active shipments</div></div><div style="width:42px;height:24px;border-radius:999px;background:#4f46e5;position:relative;flex:none;"><div style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;"></div></div></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;"><button onClick="{{ saveSettings }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">check</span> Save changes</button></div>
+        </div>
+      </sc-if>
+
+      <!-- ===== 403 ===== -->
+      <sc-if value="{{ showForbidden }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+          <div style="text-align:center;max-width:420px;">
+            <div style="width:72px;height:72px;border-radius:18px;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><span style="font-family:'Material Symbols Rounded';font-size:38px;line-height:1;color:#dc2626;">gpp_bad</span></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#dc2626;font-weight:600;letter-spacing:.05em;margin-bottom:8px;">403 · FORBIDDEN</div>
+            <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;letter-spacing:-.02em;">Access restricted</h2>
+            <p style="margin:0 0 22px;font-size:14px;color:#667085;line-height:1.5;">Your account doesn't have the <span style="font-weight:600;color:#344054;">Logistics Operator</span> permission required to view the GHN Shipping Control Panel. Contact an admin to request access.</p>
+            <div style="display:flex;gap:10px;justify-content:center;"><button onClick="{{ goOrders }}" style="padding:10px 18px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Back to dashboard</button><button onClick="{{ doLogout }}" style="padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Switch account</button></div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== NOT FOUND ===== -->
+      <sc-if value="{{ showNotFound }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+          <div style="text-align:center;max-width:420px;">
+            <div style="width:72px;height:72px;border-radius:18px;background:#f4f5f7;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;"><span style="font-family:'Material Symbols Rounded';font-size:38px;line-height:1;color:#b6bcc7;">search_off</span></div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#98a2b3;font-weight:600;letter-spacing:.05em;margin-bottom:8px;">404 · NOT FOUND</div>
+            <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;letter-spacing:-.02em;">Order not found</h2>
+            <p style="margin:0 0 22px;font-size:14px;color:#667085;line-height:1.5;">We couldn't find a shipment matching that ID. It may have been removed, or the link is incorrect.</p>
+            <button onClick="{{ goOrders }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">arrow_back</span> Back to shipments</button>
+          </div>
+        </div>
+      </sc-if>
+
+    </main>
+  </div>
+
+  <!-- ============ MODALS ============ -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ true }}">
+  <div style="position:fixed;inset:0;background:rgba(15,23,42,.42);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:24px;z-index:60;animation:overlayIn .14s ease;" onClick="{{ closeModal }}">
+    <div onClick="{{ stop }}" style="width:100%;max-width:440px;background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(16,24,40,.22);animation:panelIn .18s cubic-bezier(.2,.8,.2,1);overflow:hidden;">
+
+      <!-- SYNC -->
+      <sc-if value="{{ mSync }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;"><div style="width:42px;height:42px;border-radius:11px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#4f46e5;">sync</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Sync GHN status</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">Pull the latest shipping status for this order directly from GHN.</p></div></div>
+          <div style="background:#f7f8fa;border:1px solid #f0f1f4;border-radius:11px;padding:14px;margin-bottom:20px;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12.5px;color:#98a2b3;">Current GHN status</span><span style="{{ sel.ghnBadgeStyle }}"><span style="{{ sel.ghnDotStyle }}"></span>{{ sel.ghnLabel }}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:12.5px;color:#98a2b3;">GHN order code</span><span style="font-size:12.5px;font-family:'IBM Plex Mono',monospace;font-weight:600;">{{ sel.ghnCode }}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="font-size:12.5px;color:#98a2b3;">Last synced</span><span style="font-size:12.5px;">{{ sel.lastSynced }}</span></div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Cancel</button><button onClick="{{ confirmSync }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">sync</span> Sync now</button></div>
+        </div>
+      </sc-if>
+
+      <!-- CANCEL -->
+      <sc-if value="{{ mCancel }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;"><div style="width:42px;height:42px;border-radius:11px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#dc2626;">cancel</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Cancel shipment</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">This cancels the GHN order and stops delivery. This can't be undone.</p></div></div>
+          <div style="display:flex;gap:9px;padding:11px 13px;border-radius:10px;background:#fffbeb;border:1px solid #fde68a;margin-bottom:16px;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#d97706;flex:none;">warning</span><div style="font-size:12.5px;color:#92400e;line-height:1.4;">Cancellation is not available once the parcel is out for delivery or already delivered.</div></div>
+          <label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Reason for cancellation</label>
+          <textarea value="{{ cancelReason }}" onInput="{{ onCancelReason }}" placeholder="e.g. Buyer requested cancellation before pickup…" style="width:100%;min-height:84px;padding:10px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;resize:vertical;outline:none;background:#fbfbfc;margin-bottom:20px;"></textarea>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Keep order</button><button onClick="{{ confirmCancel }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#dc2626;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">cancel</span> Confirm cancellation</button></div>
+        </div>
+      </sc-if>
+
+      <!-- RETURN -->
+      <sc-if value="{{ mReturn }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;"><div style="width:42px;height:42px;border-radius:11px;background:#fff7ed;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#ea580c;">assignment_return</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Return to seller</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">Request GHN to return this parcel to the seller's warehouse.</p></div></div>
+          <div style="background:#f7f8fa;border:1px solid #f0f1f4;border-radius:11px;padding:13px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12.5px;color:#98a2b3;">Current status</span><span style="{{ sel.ghnBadgeStyle }}"><span style="{{ sel.ghnDotStyle }}"></span>{{ sel.ghnLabel }}</span></div>
+          <label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Return reason</label>
+          <textarea value="{{ returnReason }}" onInput="{{ onReturnReason }}" placeholder="e.g. Recipient unreachable after 3 delivery attempts…" style="width:100%;min-height:84px;padding:10px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;resize:vertical;outline:none;background:#fbfbfc;margin-bottom:20px;"></textarea>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Cancel</button><button onClick="{{ confirmReturn }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#ea580c;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">assignment_return</span> Confirm return</button></div>
+        </div>
+      </sc-if>
+
+      <!-- DELIVERY AGAIN -->
+      <sc-if value="{{ mAgain }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;"><div style="width:42px;height:42px;border-radius:11px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#4f46e5;">replay</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Request re-delivery</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">Ask GHN to attempt delivery again to the same recipient.</p></div></div>
+          <div style="display:flex;gap:9px;padding:11px 13px;border-radius:10px;background:#fef2f2;border:1px solid #fee2e2;margin-bottom:16px;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;color:#dc2626;flex:none;">error</span><div><div style="font-size:12px;font-weight:700;color:#991b1b;margin-bottom:1px;">Previous failure</div><div style="font-size:12.5px;color:#b42318;line-height:1.4;">{{ sel.ghn.failReason }}</div></div></div>
+          <label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">Note for shipper <span style="color:#b6bcc7;font-weight:400;">(optional)</span></label>
+          <textarea value="{{ againNote }}" onInput="{{ onAgainNote }}" placeholder="e.g. Call recipient 30 min before arrival…" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;resize:vertical;outline:none;background:#fbfbfc;margin-bottom:20px;"></textarea>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Cancel</button><button onClick="{{ confirmAgain }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">replay</span> Confirm re-delivery</button></div>
+        </div>
+      </sc-if>
+
+      <!-- UPDATE COD -->
+      <sc-if value="{{ mCod }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:18px;"><div style="width:42px;height:42px;border-radius:11px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#4f46e5;">payments</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Update COD amount</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">Change the cash-on-delivery amount collected from the buyer.</p></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f7f8fa;border:1px solid #f0f1f4;border-radius:10px;margin-bottom:16px;"><span style="font-size:12.5px;color:#98a2b3;">Current COD</span><span style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;">{{ sel.codDisplay }}</span></div>
+          <label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:6px;">New COD amount (VND)</label>
+          <input value="{{ codNew }}" onInput="{{ onCodNew }}" placeholder="e.g. 26990000" style="width:100%;padding:11px 13px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:14px;font-family:'IBM Plex Mono',monospace;background:#fbfbfc;outline:none;margin-bottom:8px;" />
+          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#98a2b3;margin-bottom:20px;"><span style="font-family:'Material Symbols Rounded';font-size:14px;line-height:1;">info</span> Must be a positive amount and cannot exceed the order total ({{ sel.totalFmt }}).</div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Cancel</button><button onClick="{{ confirmCod }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">check</span> Update COD</button></div>
+        </div>
+      </sc-if>
+
+      <!-- UPDATE INFO -->
+      <sc-if value="{{ mInfo }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:24px;max-height:82vh;overflow-y:auto;">
+          <div style="display:flex;align-items:flex-start;gap:13px;margin-bottom:18px;"><div style="width:42px;height:42px;border-radius:11px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex:none;"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;color:#4f46e5;">edit_location_alt</span></div><div><h3 style="margin:0 0 3px;font-size:17px;font-weight:700;">Update receiver info</h3><p style="margin:0;font-size:13px;color:#667085;line-height:1.45;">Changes are pushed to GHN. Only allowed before pickup.</p></div></div>
+          <div style="display:flex;flex-direction:column;gap:13px;margin-bottom:20px;">
+            <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">Receiver name</label><input value="{{ infoForm.name }}" onInput="{{ onInfoName }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+            <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">Phone</label><input value="{{ infoForm.phone }}" onInput="{{ onInfoPhone }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;font-family:'IBM Plex Mono',monospace;background:#fbfbfc;outline:none;" /></div>
+            <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">Street address</label><input value="{{ infoForm.address }}" onInput="{{ onInfoAddress }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">Ward</label><input value="{{ infoForm.ward }}" onInput="{{ onInfoWard }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+              <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">District</label><input value="{{ infoForm.district }}" onInput="{{ onInfoDistrict }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+            </div>
+            <div><label style="display:block;font-size:12.5px;font-weight:600;color:#344054;margin-bottom:5px;">Province / City</label><input value="{{ infoForm.province }}" onInput="{{ onInfoProvince }}" style="width:100%;padding:9px 12px;border:1px solid #e7e9ee;border-radius:9px;font:inherit;font-size:13.5px;background:#fbfbfc;outline:none;" /></div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;"><button onClick="{{ closeModal }}" style="padding:10px 16px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;">Cancel</button><button onClick="{{ confirmInfo }}" style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">save</span> Save changes</button></div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:10px;z-index:80;">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:11px;min-width:280px;max-width:380px;padding:13px 15px;background:#fff;border:1px solid #e7e9ee;border-left:3px solid {{ t.accent }};border-radius:11px;box-shadow:0 10px 30px rgba(16,24,40,.14);animation:toastIn .2s ease;">
+        <span style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:none;{{ t.iconWrap }}"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;">{{ t.icon }}</span></span>
+        <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:600;line-height:1.3;">{{ t.title }}</div><sc-if value="{{ t.hasMsg }}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;color:#98a2b3;margin-top:1px;">{{ t.msg }}</div></sc-if></div>
+        <button onClick="{{ t.dismiss }}" style="border:none;background:none;cursor:pointer;color:#cbd2db;display:flex;padding:2px;"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;">close</span></button>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    loggedIn: false, route: 'dashboard', selectedId: null, modal: null,
+    forceState: null, demoOpen: false, refreshing: false,
+    search: '', ghnFilter: 'all', localFilter: 'all', onlyFailed: false,
+    dateFrom: '', dateTo: '',
+    toasts: [], toastSeq: 0,
+    codNew: '', cancelReason: '', returnReason: '', againNote: '', infoForm: null,
+    email: 'mai.tran@trybuy.vn', password: '',
+    orders: null
+  };
+
+  componentDidMount() { if (!this.state.orders) this.setState({ orders: this.seed() }); }
+
+  seed() {
+    const h = (action, old, nw, actor, time, result, kind) => ({ action, old, nw, actor, time, result, kind });
+    return [
+      { id:'TB-100245', ghnCode:'GHN5A9KQ2H', buyer:'Nguyễn Văn An', seller:'TechZone Official', product:'iPhone 15 Pro Max 256GB', localStatus:'shipping', ghnStatus:'delivering', cod:0, fee:35000, total:32990000, created:'24 Jun 2026, 09:12', lastSynced:'2 min ago',
+        receiver:{ name:'Nguyễn Văn An', phone:'0901 234 567', address:'128 Nguyễn Huệ, P. Bến Nghé', ward:'Phường Bến Nghé', district:'Quận 1', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'VNPay (prepaid)', status:'paid' },
+        ghn:{ expected:'27 Jun 2026', pickShift:'Morning (08:00–12:00)', weight:'1.2 kg', service:'Standard', failReason:'', returnReason:'' },
+        history:[ h('Order created','—','pending','System','24 Jun, 09:12','success','create'), h('GHN order created','pending','ready_to_pick','System','24 Jun, 09:15','success','ghn'), h('Picked up','ready_to_pick','picking','GHN Webhook','25 Jun, 08:40','success','webhook'), h('Out for delivery','picking','delivering','GHN Webhook','26 Jun, 07:30','success','webhook'), h('Manual sync','delivering','delivering','Trần Thị Mai','26 Jun, 11:58','success','sync') ] },
+
+      { id:'TB-100231', ghnCode:'GHN7C2MX1B', buyer:'Trần Thị Hồng', seller:'Apple Hải Châu', product:'MacBook Air M3 13"', localStatus:'confirmed', ghnStatus:'ready_to_pick', cod:27490000, fee:45000, total:27490000, created:'25 Jun 2026, 14:30', lastSynced:'8 min ago',
+        receiver:{ name:'Trần Thị Hồng', phone:'0938 776 221', address:'45 Lê Lợi, P. Phạm Ngũ Lão', ward:'Phường Phạm Ngũ Lão', district:'Quận 1', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'COD (cash)', status:'unpaid' },
+        ghn:{ expected:'28 Jun 2026', pickShift:'Afternoon (14:00–18:00)', weight:'1.5 kg', service:'Standard', failReason:'', returnReason:'' },
+        history:[ h('Order created','—','pending','System','25 Jun, 14:30','success','create'), h('GHN order created','pending','ready_to_pick','System','25 Jun, 14:33','success','ghn'), h('COD updated','—','—','Trần Thị Mai','25 Jun, 15:02','success','cod') ] },
+
+      { id:'TB-100218', ghnCode:'GHN3F8KP9D', buyer:'Lê Minh Quân', seller:'AudioGear VN', product:'AirPods Pro 2 USB-C', localStatus:'completed', ghnStatus:'delivered', cod:0, fee:22000, total:5990000, created:'21 Jun 2026, 10:05', lastSynced:'1 hour ago',
+        receiver:{ name:'Lê Minh Quân', phone:'0907 112 889', address:'272 Võ Văn Kiệt, P. Cô Giang', ward:'Phường Cô Giang', district:'Quận 1', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'Momo (prepaid)', status:'paid' },
+        ghn:{ expected:'23 Jun 2026', pickShift:'Morning (08:00–12:00)', weight:'0.3 kg', service:'Express', failReason:'', returnReason:'' },
+        history:[ h('Order created','—','pending','System','21 Jun, 10:05','success','create'), h('GHN order created','pending','ready_to_pick','System','21 Jun, 10:07','success','ghn'), h('Out for delivery','picking','delivering','GHN Webhook','22 Jun, 09:10','success','webhook'), h('Delivered','delivering','delivered','GHN Webhook','22 Jun, 15:48','success','webhook') ] },
+
+      { id:'TB-100209', ghnCode:'GHN1B4QW7E', buyer:'Phạm Thị Lan', seller:'Mobile World Q.7', product:'Samsung Galaxy S24 Ultra', localStatus:'shipping', ghnStatus:'delivery_fail', cod:26990000, fee:38000, total:26990000, created:'22 Jun 2026, 16:20', lastSynced:'25 min ago',
+        receiver:{ name:'Phạm Thị Lan', phone:'0912 553 470', address:'89 Nguyễn Thị Thập, P. Tân Phú', ward:'Phường Tân Phú', district:'Quận 7', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'COD (cash)', status:'unpaid' },
+        ghn:{ expected:'25 Jun 2026', pickShift:'Afternoon (14:00–18:00)', weight:'1.1 kg', service:'Standard', failReason:'Recipient not available at the address; phone unreachable on 2nd attempt.', returnReason:'' },
+        history:[ h('Order created','—','pending','System','22 Jun, 16:20','success','create'), h('GHN order created','pending','ready_to_pick','System','22 Jun, 16:22','success','ghn'), h('Out for delivery','picking','delivering','GHN Webhook','24 Jun, 08:15','success','webhook'), h('Delivery failed','delivering','delivery_fail','GHN Webhook','24 Jun, 17:42','failed','fail'), h('Manual sync','delivery_fail','delivery_fail','Trần Thị Mai','26 Jun, 11:33','success','sync') ] },
+
+      { id:'TB-100198', ghnCode:'GHN9D5RT3F', buyer:'Đặng Hoàng Nam', seller:'iStore Saigon', product:'iPad Air 11" M2 128GB', localStatus:'shipping', ghnStatus:'picking', cod:0, fee:30000, total:16490000, created:'25 Jun 2026, 08:50', lastSynced:'14 min ago',
+        receiver:{ name:'Đặng Hoàng Nam', phone:'0903 668 142', address:'17 Trần Hưng Đạo, P. Cầu Ông Lãnh', ward:'Phường Cầu Ông Lãnh', district:'Quận 1', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'VNPay (prepaid)', status:'paid' },
+        ghn:{ expected:'27 Jun 2026', pickShift:'Morning (08:00–12:00)', weight:'0.7 kg', service:'Standard', failReason:'', returnReason:'' },
+        history:[ h('Order created','—','pending','System','25 Jun, 08:50','success','create'), h('GHN order created','pending','ready_to_pick','System','25 Jun, 08:52','success','ghn'), h('Picked up','ready_to_pick','picking','GHN Webhook','26 Jun, 09:25','success','webhook') ] },
+
+      { id:'TB-100187', ghnCode:'GHN6E1YU8G', buyer:'Vũ Khánh Chi', seller:'WatchHub VN', product:'Apple Watch Series 9 45mm', localStatus:'shipping', ghnStatus:'waiting_to_return', cod:11290000, fee:28000, total:11290000, created:'20 Jun 2026, 11:40', lastSynced:'40 min ago',
+        receiver:{ name:'Vũ Khánh Chi', phone:'0977 304 615', address:'320 Cách Mạng Tháng 8, P.10', ward:'Phường 10', district:'Quận 3', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'COD (cash)', status:'unpaid' },
+        ghn:{ expected:'23 Jun 2026', pickShift:'Afternoon (14:00–18:00)', weight:'0.4 kg', service:'Standard', failReason:'Recipient refused the parcel at the door.', returnReason:'Customer declined delivery after 3 failed attempts; returning to seller.' },
+        history:[ h('Order created','—','pending','System','20 Jun, 11:40','success','create'), h('GHN order created','pending','ready_to_pick','System','20 Jun, 11:42','success','ghn'), h('Delivery failed','delivering','delivery_fail','GHN Webhook','22 Jun, 16:05','failed','fail'), h('Return requested','delivery_fail','waiting_to_return','Trần Thị Mai','23 Jun, 09:30','success','return') ] },
+
+      { id:'TB-100176', ghnCode:'GHN4A7IO2H', buyer:'Bùi Thanh Tùng', seller:'AudioGear VN', product:'Sony WH-1000XM5', localStatus:'refunding', ghnStatus:'returned', cod:8490000, fee:26000, total:8490000, created:'17 Jun 2026, 13:15', lastSynced:'3 hours ago',
+        receiver:{ name:'Bùi Thanh Tùng', phone:'0918 245 730', address:'55 Hoàng Văn Thụ, P.15', ward:'Phường 15', district:'Quận Phú Nhuận', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'COD (cash)', status:'refunded' },
+        ghn:{ expected:'20 Jun 2026', pickShift:'Morning (08:00–12:00)', weight:'0.5 kg', service:'Standard', failReason:'Wrong address provided by buyer.', returnReason:'Undeliverable address; parcel returned to seller warehouse.' },
+        history:[ h('Order created','—','pending','System','17 Jun, 13:15','success','create'), h('Delivery failed','delivering','delivery_fail','GHN Webhook','19 Jun, 14:20','failed','fail'), h('Return requested','delivery_fail','waiting_to_return','Trần Thị Mai','19 Jun, 16:00','success','return'), h('Returned to seller','waiting_to_return','returned','GHN Webhook','21 Jun, 10:11','success','webhook') ] },
+
+      { id:'TB-100154', ghnCode:'GHN2H9PL5J', buyer:'Hoàng Mỹ Duyên', seller:'LaptopZone', product:'Dell XPS 13 Plus', localStatus:'cancelled', ghnStatus:'cancelled', cod:0, fee:0, total:34990000, created:'18 Jun 2026, 09:00', lastSynced:'1 day ago',
+        receiver:{ name:'Hoàng Mỹ Duyên', phone:'0905 871 360', address:'12 Phan Xích Long, P.2', ward:'Phường 2', district:'Quận Phú Nhuận', province:'TP. Hồ Chí Minh' },
+        payment:{ method:'VNPay (prepaid)', status:'refunded' },
+        ghn:{ expected:'—', pickShift:'—', weight:'1.6 kg', service:'Standard', failReason:'', returnReason:'' },
+        history:[ h('Order created','—','pending','System','18 Jun, 09:00','success','create'), h('GHN order created','pending','ready_to_pick','System','18 Jun, 09:03','success','ghn'), h('Order cancelled','ready_to_pick','cancelled','Trần Thị Mai','18 Jun, 11:20','success','cancel') ] }
+    ];
+  }
+
+  fmtVND(n) { if (n === 0) return '0 ₫'; return Number(n).toLocaleString('vi-VN') + ' ₫'; }
+
+  ghnMeta(s) {
+    const m = {
+      ready_to_pick:    { bg:'#eef2f7', fg:'#475569', dot:'#94a3b8', label:'Ready to pick' },
+      picking:          { bg:'#fef3c7', fg:'#92400e', dot:'#d97706', label:'Picking' },
+      delivering:       { bg:'#dbeafe', fg:'#1e40af', dot:'#2563eb', label:'Delivering' },
+      delivered:        { bg:'#dcfce7', fg:'#166534', dot:'#16a34a', label:'Delivered' },
+      delivery_fail:    { bg:'#fee2e2', fg:'#991b1b', dot:'#dc2626', label:'Delivery failed' },
+      waiting_to_return:{ bg:'#ffedd5', fg:'#9a3412', dot:'#ea580c', label:'Waiting to return' },
+      returned:         { bg:'#ede9fe', fg:'#5b21b6', dot:'#7c3aed', label:'Returned' },
+      cancelled:        { bg:'#f1f5f9', fg:'#64748b', dot:'#94a3b8', label:'Cancelled' }
+    };
+    return m[s] || m.ready_to_pick;
+  }
+  localMeta(s) {
+    const m = {
+      pending:   { bg:'#f1f5f9', fg:'#64748b', dot:'#94a3b8', label:'Pending' },
+      confirmed: { bg:'#e0f2fe', fg:'#075985', dot:'#0ea5e9', label:'Confirmed' },
+      shipping:  { bg:'#eef2ff', fg:'#4338ca', dot:'#4f46e5', label:'Shipping' },
+      completed: { bg:'#dcfce7', fg:'#166534', dot:'#16a34a', label:'Completed' },
+      refunding: { bg:'#ffedd5', fg:'#9a3412', dot:'#ea580c', label:'Refunding' },
+      cancelled: { bg:'#f1f5f9', fg:'#64748b', dot:'#94a3b8', label:'Cancelled' }
+    };
+    return m[s] || m.pending;
+  }
+  badgeStyle(meta) { return `display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;background:${meta.bg};color:${meta.fg};`; }
+  dotStyle(meta) { return `width:6px;height:6px;border-radius:50%;flex:none;background:${meta.dot};`; }
+
+  decorate(o) {
+    const g = this.ghnMeta(o.ghnStatus), l = this.localMeta(o.localStatus);
+    const pay = { paid:['#dcfce7','#166534','Paid'], unpaid:['#fef3c7','#92400e','Unpaid'], refunded:['#ede9fe','#5b21b6','Refunded'] }[o.payment.status] || ['#f1f5f9','#64748b','—'];
+    return Object.assign({}, o, {
+      ghnBadgeStyle: this.badgeStyle(g), ghnDotStyle: this.dotStyle(g), ghnLabel: g.label,
+      localBadgeStyle: this.badgeStyle(l), localDotStyle: this.dotStyle(l), localLabel: l.label,
+      codFmt: this.fmtVND(o.cod), feeFmt: o.fee === 0 ? '—' : this.fmtVND(o.fee), totalFmt: this.fmtVND(o.total),
+      codDisplay: o.cod === 0 ? 'No COD' : this.fmtVND(o.cod),
+      codColor: o.cod === 0 ? 'color:#98a2b3;' : 'color:#0f172a;',
+      payBadgeStyle: `display:inline-flex;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:600;background:${pay[0]};color:${pay[1]};`,
+      payLabel: pay[2]
+    });
+  }
+
+  actionsFor(o) {
+    const s = o.ghnStatus;
+    const can = {
+      sync: true,
+      cancel: ['ready_to_pick','picking'].includes(s),
+      return: ['delivery_fail','waiting_to_return'].includes(s),
+      again: s === 'delivery_fail',
+      cod: ['ready_to_pick','picking','delivering'].includes(s),
+      info: ['ready_to_pick','picking'].includes(s)
+    };
+    const reasons = {
+      cancel: 'Can\u2019t cancel after the parcel is picked up or delivered.',
+      return: 'Only available after a failed delivery.',
+      again: 'Only available for failed deliveries.',
+      cod: 'COD is locked once the order is delivered or closed.',
+      info: 'Address can\u2019t be changed after pickup.'
+    };
+    const defs = [
+      { key:'sync',   label:'Sync GHN Status', icon:'sync',              variant:'primary' },
+      { key:'cod',    label:'Update COD',      icon:'payments',          variant:'default' },
+      { key:'info',   label:'Update Order Info',icon:'edit_location_alt',variant:'default' },
+      { key:'again',  label:'Delivery Again',  icon:'replay',            variant:'default' },
+      { key:'return', label:'Return Order',    icon:'assignment_return', variant:'warn' },
+      { key:'cancel', label:'Cancel Order',    icon:'cancel',            variant:'danger' }
+    ];
+    return defs.map(d => {
+      const enabled = !!can[d.key];
+      let btn;
+      if (!enabled) {
+        btn = 'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:1px solid #f0f1f4;border-radius:10px;background:#fafbfc;color:#cbd2db;font:inherit;font-size:13.5px;font-weight:600;cursor:not-allowed;';
+      } else if (d.variant === 'primary') {
+        btn = 'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:1px solid #4f46e5;border-radius:10px;background:#4f46e5;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;';
+      } else if (d.variant === 'danger') {
+        btn = 'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:1px solid #fde0e0;border-radius:10px;background:#fff;color:#dc2626;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;';
+      } else if (d.variant === 'warn') {
+        btn = 'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:1px solid #fde3c8;border-radius:10px;background:#fff;color:#ea580c;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;';
+      } else {
+        btn = 'display:flex;align-items:center;gap:10px;width:100%;padding:11px 13px;border:1px solid #e7e9ee;border-radius:10px;background:#fff;color:#344054;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;';
+      }
+      return { key:d.key, label:d.label, icon:d.icon, enabled, disabled:!enabled, btnStyle:btn, reason:reasons[d.key] || '', onClick: enabled ? () => this.openModal(d.key) : () => {} };
+    });
+  }
+
+  decorateTimeline(history) {
+    const wrap = { create:['#eef2ff','#4f46e5'], ghn:['#eef2ff','#4f46e5'], webhook:['#dbeafe','#2563eb'], sync:['#eef2ff','#4f46e5'], cod:['#dcfce7','#16a34a'], fail:['#fee2e2','#dc2626'], return:['#ffedd5','#ea580c'], cancel:['#f1f5f9','#64748b'] };
+    const icons = { create:'add_circle', ghn:'local_shipping', webhook:'bolt', sync:'sync', cod:'payments', fail:'error', return:'assignment_return', cancel:'cancel' };
+    return history.map((t, i) => {
+      const w = wrap[t.kind] || wrap.create;
+      const last = i === history.length - 1;
+      const ok = t.result === 'success';
+      const actorIcon = (t.actor.includes('Webhook') || t.actor === 'System') ? 'smart_toy' : 'person';
+      const gm = this.ghnMeta(t.old), gn = this.ghnMeta(t.nw);
+      return {
+        action: t.action, old: t.old === '—' ? '—' : (gm.label || t.old), new: t.nw === '—' ? '—' : (gn.label || t.nw),
+        hasChange: t.old !== '—' && t.nw !== '—' && t.old !== t.nw,
+        actor: t.actor, actorIcon, time: t.time,
+        icon: icons[t.kind] || 'circle',
+        iconWrap: `background:${w[0]};color:${w[1]};`,
+        lineStyle: last ? 'display:none;' : 'width:2px;flex:1;background:#eef0f3;margin-top:4px;min-height:14px;',
+        resultLabel: ok ? 'Success' : 'Failed',
+        resultStyle: ok ? 'display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#16a34a;background:#dcfce7;padding:1px 8px;border-radius:999px;' : 'display:inline-flex;align-items:center;font-size:11px;font-weight:600;color:#dc2626;background:#fee2e2;padding:1px 8px;border-radius:999px;'
+      };
+    });
+  }
+
+  // ---- navigation ----
+  nav(r) { this.setState({ route: r, demoOpen: false, forceState: null }); }
+  openOrder(id) { this.setState({ route: 'detail', selectedId: id, demoOpen: false }); window.scrollTo(0,0); }
+  doLogin() { this.setState({ loggedIn: true, route: 'dashboard' }); }
+  doLogout() { this.setState({ loggedIn: false, route: 'dashboard', selectedId: null }); }
+  doRefresh() {
+    this.setState({ refreshing: true, forceState: 'loading' });
+    setTimeout(() => { this.setState({ refreshing: false, forceState: null }); this.addToast('Shipments refreshed', 'success', 'Synced 8 orders with GHN'); }, 950);
+  }
+  clearFilters() { this.setState({ search: '', ghnFilter: 'all', localFilter: 'all', onlyFailed: false, dateFrom: '', dateTo: '', forceState: null }); }
+
+  // ---- modals ----
+  openModal(key) {
+    const o = this.cur();
+    const patch = { modal: key };
+    if (key === 'cod') patch.codNew = '';
+    if (key === 'cancel') patch.cancelReason = '';
+    if (key === 'return') patch.returnReason = '';
+    if (key === 'again') patch.againNote = '';
+    if (key === 'info' && o) patch.infoForm = Object.assign({}, o.receiver);
+    this.setState(patch);
+  }
+  closeModal() { this.setState({ modal: null }); }
+
+  cur() { return (this.state.orders || []).find(o => o.id === this.state.selectedId); }
+
+  mutate(fn) {
+    const orders = (this.state.orders || []).map(o => o.id === this.state.selectedId ? fn(Object.assign({}, o)) : o);
+    this.setState({ orders });
+  }
+
+  confirmAction(key) {
+    const o = this.cur();
+    if (key === 'sync') { this.mutate(x => { x.lastSynced = 'just now'; return x; }); this.addToast('GHN status synced', 'success', 'Status is up to date'); }
+    if (key === 'cancel') { this.mutate(x => { x.ghnStatus = 'cancelled'; x.localStatus = 'cancelled'; return x; }); this.addToast('Order cancelled', 'success', 'GHN order has been cancelled'); }
+    if (key === 'return') { this.mutate(x => { x.ghnStatus = 'waiting_to_return'; return x; }); this.addToast('Return requested', 'success', 'Parcel scheduled to return to seller'); }
+    if (key === 'again') { this.mutate(x => { x.ghnStatus = 'ready_to_pick'; return x; }); this.addToast('Re-delivery requested', 'success', 'GHN will attempt delivery again'); }
+    if (key === 'cod') {
+      const v = parseInt((this.state.codNew || '').replace(/\D/g, ''), 10);
+      if (!v || v <= 0) { this.addToast('Invalid COD amount', 'error', 'Enter a positive number'); return; }
+      if (o && v > o.total) { this.addToast('COD exceeds order total', 'error', 'Reduce the amount and try again'); return; }
+      this.mutate(x => { x.cod = v; return x; }); this.addToast('COD updated', 'success', 'New COD: ' + this.fmtVND(v));
+    }
+    if (key === 'info') { const f = this.state.infoForm; this.mutate(x => { x.receiver = Object.assign({}, f); return x; }); this.addToast('Receiver info updated', 'success', 'Changes pushed to GHN'); }
+    this.setState({ modal: null });
+  }
+
+  // ---- toasts ----
+  addToast(title, type, msg) {
+    const id = this.state.toastSeq + 1;
+    const t = { id, title, type, msg: msg || '' };
+    this.setState({ toasts: [...this.state.toasts, t], toastSeq: id });
+    setTimeout(() => { this.setState({ toasts: this.state.toasts.filter(x => x.id !== id) }); }, 3800);
+  }
+  dismissToast(id) { this.setState({ toasts: this.state.toasts.filter(x => x.id !== id) }); }
+
+  filtered() {
+    let list = (this.state.orders || []).slice();
+    const q = this.state.search.trim().toLowerCase();
+    if (q) list = list.filter(o => o.id.toLowerCase().includes(q) || o.ghnCode.toLowerCase().includes(q) || o.buyer.toLowerCase().includes(q));
+    if (this.state.ghnFilter !== 'all') list = list.filter(o => o.ghnStatus === this.state.ghnFilter);
+    if (this.state.localFilter !== 'all') list = list.filter(o => o.localStatus === this.state.localFilter);
+    if (this.state.onlyFailed) list = list.filter(o => o.ghnStatus === 'delivery_fail' || o.ghnStatus === 'waiting_to_return');
+    return list;
+  }
+
+  navStyle(active) {
+    return active
+      ? 'display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;margin-bottom:3px;border:none;border-radius:9px;background:#eef2ff;color:#4f46e5;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;'
+      : 'display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;margin-bottom:3px;border:none;border-radius:9px;background:none;color:#475467;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;';
+  }
+
+  renderVals() {
+    const st = this.state;
+    const orders = st.orders || [];
+    const route = st.route;
+    const cur = this.cur();
+
+    // demo states
+    const demoItems = [
+      { label:'Live data', icon:'table_rows', onClick: () => this.setState({ route:'orders', forceState:null, demoOpen:false }) },
+      { label:'Loading skeleton', icon:'hourglass_top', onClick: () => this.setState({ route:'orders', forceState:'loading', demoOpen:false }) },
+      { label:'Empty result', icon:'inbox', onClick: () => this.setState({ route:'orders', forceState:'empty', demoOpen:false }) },
+      { label:'GHN sync error', icon:'cloud_off', onClick: () => this.setState({ route:'orders', forceState:'error', demoOpen:false }) },
+      { label:'403 Forbidden', icon:'gpp_bad', onClick: () => this.setState({ route:'forbidden', demoOpen:false }) },
+      { label:'Order not found', icon:'search_off', onClick: () => this.setState({ route:'notfound', demoOpen:false }) }
+    ];
+
+    const navDefs = [
+      { key:'dashboard', label:'Dashboard', icon:'space_dashboard' },
+      { key:'orders', label:'Shipping Orders', icon:'local_shipping', badge:'8' },
+      { key:'sync', label:'GHN Sync', icon:'sync' },
+      { key:'history', label:'Action History', icon:'history' },
+      { key:'settings', label:'Settings', icon:'settings' }
+    ];
+    const navItems = navDefs.map(n => ({ label:n.label, icon:n.icon, badge:n.badge || '', style:this.navStyle(route === n.key || (n.key === 'orders' && route === 'detail')), onClick: () => this.nav(n.key) }));
+
+    const stats = [
+      { label:'Total Shipments', value:'1,284', sub:'+42 this week', icon:'inventory_2', iconWrap:'background:#eef2ff;color:#4f46e5;' },
+      { label:'Waiting to Pick', value:'86', sub:'Awaiting pickup', icon:'schedule', iconWrap:'background:#fef3c7;color:#b45309;' },
+      { label:'Delivering', value:'214', sub:'On the road', icon:'local_shipping', iconWrap:'background:#dbeafe;color:#2563eb;' },
+      { label:'Delivered', value:'932', sub:'72.6% of total', icon:'check_circle', iconWrap:'background:#dcfce7;color:#16a34a;' },
+      { label:'Failed / Return', value:'52', sub:'Needs attention', icon:'error', iconWrap:'background:#fee2e2;color:#dc2626;' }
+    ];
+
+    const distribution = [
+      { label:'Delivered', value:'72.6%', w:72.6, c:'#16a34a' },
+      { label:'Delivering', value:'16.7%', w:16.7, c:'#2563eb' },
+      { label:'Waiting to pick', value:'6.7%', w:6.7, c:'#d97706' },
+      { label:'Failed / return', value:'4.0%', w:4.0, c:'#dc2626' }
+    ].map(d => ({ label:d.label, value:d.value, barStyle:`height:100%;width:${d.w}%;background:${d.c};border-radius:999px;` }));
+
+    const decoratedAll = this.filtered().map(o => {
+      const d = this.decorate(o);
+      d.open = () => this.openOrder(o.id);
+      d.quickSync = () => { this.setState({ selectedId:o.id }, () => { this.mutate(x=>{x.lastSynced='just now';return x;}); }); this.addToast('Synced ' + o.id, 'success', 'GHN status is up to date'); };
+      return d;
+    });
+
+    // table state
+    let tableState = 'data';
+    if (st.forceState === 'loading') tableState = 'loading';
+    else if (st.forceState === 'error') tableState = 'error';
+    else if (st.forceState === 'empty' || decoratedAll.length === 0) tableState = 'empty';
+
+    // detail order
+    let order = null;
+    if (cur) {
+      order = this.decorate(cur);
+      order.hasFail = !!cur.ghn.failReason;
+      order.hasReturn = !!cur.ghn.returnReason;
+      order.actions = this.actionsFor(cur);
+      order.timeline = this.decorateTimeline(cur.history);
+      order.openSync = () => this.openModal('sync');
+    }
+
+    const sel = cur ? this.decorate(cur) : { ghnBadgeStyle:'', ghnDotStyle:'', ghnLabel:'', ghnCode:'', lastSynced:'', codDisplay:'', totalFmt:'', ghn:{ failReason:'' } };
+
+    // audit log (recent first)
+    const aicons = { create:'add_circle', ghn:'local_shipping', webhook:'bolt', sync:'sync', cod:'payments', fail:'error', return:'assignment_return', cancel:'cancel' };
+    const auditLog = [];
+    orders.forEach(o => o.history.forEach(hh => auditLog.push({ o, hh })));
+    auditLog.reverse();
+    const audit = auditLog.slice(0, 16).map(({ o, hh }) => {
+      const ok = hh.result === 'success';
+      const change = hh.old !== '—' && hh.nw !== '—' && hh.old !== hh.nw;
+      const gm = this.ghnMeta(hh.old), gn = this.ghnMeta(hh.nw);
+      return {
+        orderId:o.id, action:hh.action, icon:aicons[hh.kind] || 'circle',
+        hasChange:change, noChange:!change, old:gm.label || hh.old, new:gn.label || hh.nw,
+        actor:hh.actor, actorIcon:(hh.actor.includes('Webhook') || hh.actor === 'System') ? 'smart_toy' : 'person', time:hh.time,
+        resultLabel: ok ? 'OK' : 'Failed',
+        resultStyle: ok ? 'display:inline-flex;font-size:10.5px;font-weight:700;color:#16a34a;background:#dcfce7;padding:1px 6px;border-radius:999px;' : 'display:inline-flex;font-size:10.5px;font-weight:700;color:#dc2626;background:#fee2e2;padding:1px 6px;border-radius:999px;',
+        open: () => this.openOrder(o.id)
+      };
+    });
+
+    const syncRows = orders.filter(o => !['cancelled'].includes(o.ghnStatus)).map(o => this.decorate(o));
+
+    const recent = orders.slice(0, 5).map(o => { const d = this.decorate(o); d.open = () => this.openOrder(o.id); return d; });
+
+    const toasts = st.toasts.map(t => {
+      const w = t.type === 'error' ? 'background:#fee2e2;color:#dc2626;' : 'background:#dcfce7;color:#16a34a;';
+      return { title:t.title, msg:t.msg, hasMsg:!!t.msg, icon: t.type === 'error' ? 'error' : 'check_circle', iconWrap:w, accent: t.type === 'error' ? '#dc2626' : '#16a34a', dismiss: () => this.dismissToast(t.id) };
+    });
+
+    const titles = {
+      dashboard:['Operations · Overview','Shipping Dashboard'], orders:['Operations · Shipments','Shipping Orders'],
+      detail:['Shipments · Detail', cur ? cur.id : 'Order detail'], sync:['Operations · Integration','GHN Sync'],
+      history:['Operations · Audit','Action History'], settings:['Operations','Settings'],
+      forbidden:['Error','Access denied'], notfound:['Error','Not found']
+    };
+    const tt = titles[route] || ['Operations',''];
+
+    const ghnOptions = [{ value:'all', label:'All GHN statuses' }].concat(['ready_to_pick','picking','delivering','delivered','delivery_fail','waiting_to_return','returned','cancelled'].map(s => ({ value:s, label:this.ghnMeta(s).label })));
+    const localOptions = [{ value:'all', label:'All local statuses' }].concat(['confirmed','shipping','completed','refunding','cancelled'].map(s => ({ value:s, label:this.localMeta(s).label })));
+
+    return {
+      isLogin: !st.loggedIn,
+      isApp: st.loggedIn,
+      showDashboard: route === 'dashboard', showOrders: route === 'orders', showDetail: route === 'detail' && !!cur,
+      showSync: route === 'sync', showHistory: route === 'history', showSettings: route === 'settings',
+      showForbidden: route === 'forbidden', showNotFound: route === 'notfound' || (route === 'detail' && !cur),
+      pageTitle: tt[1], pageBreadcrumb: tt[0],
+
+      // login
+      email: st.email, password: st.password,
+      onEmail: e => this.setState({ email:e.target.value }), onPassword: e => this.setState({ password:e.target.value }),
+      doLogin: () => this.doLogin(),
+
+      navItems, doLogout: () => this.doLogout(), goOrders: () => this.nav('dashboard'),
+      demoOpen: st.demoOpen, toggleDemo: () => this.setState({ demoOpen: !st.demoOpen }), demoItems,
+      hoverIn: e => e.currentTarget.style.background = '#f7f8fa', hoverOut: e => e.currentTarget.style.background = 'none',
+
+      stats, distribution, recent,
+
+      // orders
+      search: st.search, onSearch: e => this.setState({ search:e.target.value, forceState:null }),
+      ghnFilter: st.ghnFilter, onGhn: e => this.setState({ ghnFilter:e.target.value, forceState:null }),
+      localFilter: st.localFilter, onLocal: e => this.setState({ localFilter:e.target.value, forceState:null }),
+      ghnOptions, localOptions,
+      dateFrom: st.dateFrom, dateTo: st.dateTo, onFrom: e => this.setState({ dateFrom:e.target.value }), onTo: e => this.setState({ dateTo:e.target.value }),
+      onlyFailed: st.onlyFailed, toggleFailed: () => this.setState({ onlyFailed: !st.onlyFailed, forceState:null }),
+      failedToggleStyle: st.onlyFailed
+        ? 'display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border:1px solid #fda4af;border-radius:9px;background:#fff1f2;color:#be123c;font:inherit;font-size:13px;font-weight:600;cursor:pointer;'
+        : 'display:inline-flex;align-items:center;gap:6px;padding:9px 13px;border:1px solid #e7e9ee;border-radius:9px;background:#fff;color:#667085;font:inherit;font-size:13px;font-weight:600;cursor:pointer;',
+      failedToggleIcon: st.onlyFailed ? 'check_box' : 'check_box_outline_blank',
+      doRefresh: () => this.doRefresh(), clearFilters: () => this.clearFilters(),
+      refreshSpin: st.refreshing ? 'animation:spin .8s linear infinite;' : '',
+      decorated: decoratedAll,
+      tableData: tableState === 'data', tableLoading: tableState === 'loading', tableEmpty: tableState === 'empty', tableError: tableState === 'error',
+      skeletonRows: [1,2,3,4,5,6],
+      resultLabel: `Showing ${decoratedAll.length} of ${orders.length} shipments`,
+      rowIn: e => e.currentTarget.style.background = '#fafbfc', rowOut: e => e.currentTarget.style.background = 'transparent',
+      iconBtnIn: e => e.currentTarget.style.background = '#f1f3f6', iconBtnOut: e => e.currentTarget.style.background = 'none',
+
+      // detail
+      order,
+
+      // sync / history / settings
+      syncRows, auditLog: audit, saveSettings: () => this.addToast('Settings saved', 'success', 'GHN integration updated'),
+
+      // modals
+      modalOpen: !!st.modal, modal: st.modal, sel,
+      mSync: st.modal === 'sync', mCancel: st.modal === 'cancel', mReturn: st.modal === 'return', mAgain: st.modal === 'again', mCod: st.modal === 'cod', mInfo: st.modal === 'info',
+      closeModal: () => this.closeModal(), stop: e => e.stopPropagation(),
+      confirmSync: () => this.confirmAction('sync'), confirmCancel: () => this.confirmAction('cancel'), confirmReturn: () => this.confirmAction('return'),
+      confirmAgain: () => this.confirmAction('again'), confirmCod: () => this.confirmAction('cod'), confirmInfo: () => this.confirmAction('info'),
+      cancelReason: st.cancelReason, onCancelReason: e => this.setState({ cancelReason:e.target.value }),
+      returnReason: st.returnReason, onReturnReason: e => this.setState({ returnReason:e.target.value }),
+      againNote: st.againNote, onAgainNote: e => this.setState({ againNote:e.target.value }),
+      codNew: st.codNew, onCodNew: e => this.setState({ codNew:e.target.value }),
+      infoForm: st.infoForm || { name:'', phone:'', address:'', ward:'', district:'', province:'' },
+      onInfoName: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { name:e.target.value }) }),
+      onInfoPhone: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { phone:e.target.value }) }),
+      onInfoAddress: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { address:e.target.value }) }),
+      onInfoWard: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { ward:e.target.value }) }),
+      onInfoDistrict: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { district:e.target.value }) }),
+      onInfoProvince: e => this.setState({ infoForm: Object.assign({}, st.infoForm, { province:e.target.value }) }),
+
+      toasts
+    };
+  }
+}
+</script>
+</body>
+</html>
