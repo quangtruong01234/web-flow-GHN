@@ -2,6 +2,7 @@
 
 import { useToast, type ToastKind } from "@/context/ToastContext";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { cn } from "@/lib/cn";
 
 const ICON: Record<ToastKind, IconName> = {
   success: "check",
@@ -9,10 +10,10 @@ const ICON: Record<ToastKind, IconName> = {
   info: "info",
 };
 
-const ACCENT: Record<ToastKind, string> = {
-  success: "#16a34a",
-  error: "#dc2626",
-  info: "#4f46e5",
+const ACCENT_CLASS: Record<ToastKind, string> = {
+  success: "bg-green-100 text-green-700",
+  error: "bg-red-100 text-red-700",
+  info: "bg-brand-50 text-brand-700",
 };
 
 /** Renders the active toast stack in a fixed bottom-right corner. */
@@ -30,8 +31,10 @@ export function ToastHost() {
           role="status"
         >
           <span
-            className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full"
-            style={{ background: `${ACCENT[t.kind]}1a`, color: ACCENT[t.kind] }}
+            className={cn(
+              "mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full",
+              ACCENT_CLASS[t.kind],
+            )}
           >
             <Icon name={ICON[t.kind]} size={15} />
           </span>

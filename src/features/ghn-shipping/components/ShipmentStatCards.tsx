@@ -1,24 +1,56 @@
 import { Card } from "@/components/ui/Card";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { fmtVND } from "../lib/shipment-formatters";
-import type { Shipment } from "../types";
+import { fmtDateTime, fmtVND } from "../lib/shipment-formatters";
+import type { ShipmentListItem } from "../api/types";
 
-export function ShipmentStatCards({ shipments }: { shipments: Shipment[] }) {
-  const failed = shipments.filter((shipment) => shipment.ghnStatus === "delivery_fail").length;
-  const inTransit = shipments.filter((shipment) =>
-    ["picking", "delivering"].includes(shipment.ghnStatus),
+export function ShipmentStatCards({ items }: { items: ShipmentListItem[] }) {
+  const failed = items.filter((item) => item.ghnStatus === "delivery_fail").length;
+  const inTransit = items.filter((item) =>
+    item.ghnStatus === "picking" || item.ghnStatus === "delivering",
   ).length;
-  const ready = shipments.filter((shipment) => shipment.ghnStatus === "ready_to_pick").length;
-  const pendingCod = shipments.reduce(
-    (sum, shipment) => sum + (shipment.payment.status === "unpaid" ? shipment.codAmount : 0),
+  const ready = items.filter((item) => item.ghnStatus === "ready_to_pick").length;
+  // COD not yet delivered (still in the carrier's hands).
+  const pendingCod = items.reduce(
+    (sum, item) =>
+      (item.ghnStatus === "ready_to_pick" ||
+        item.ghnStatus === "picking" ||
+        item.ghnStatus === "delivering") &&
+      item.codAmount
+        ? sum + item.codAmount
+        : sum,
     0,
   );
+  const lastSync = items.reduce<string | null>((latest, item) => {
+    if (!item.lastSyncedAt) return latest;
+    if (!latest || item.lastSyncedAt > latest) return item.lastSyncedAt;
+    return latest;
+  }, null);
 
   const stats: Array<{ label: string; value: string; hint: string; icon: IconName }> = [
-    { label: "Active shipments", value: String(inTransit + ready), hint: `${inTransit} in transit, ${ready} waiting`, icon: "truck" },
-    { label: "Failed deliveries", value: String(failed), hint: "Needs operator review", icon: "warning" },
-    { label: "Pending COD", value: fmtVND(pendingCod), hint: "Mock collection total", icon: "wallet" },
-    { label: "Last sync", value: "2 min ago", hint: "Webhook connected in demo", icon: "sync" },
+    {
+      label: "Active shipments",
+      value: String(inTransit + ready),
+      hint: `${inTransit} in transit, ${ready} waiting`,
+      icon: "truck",
+    },
+    {
+      label: "Failed deliveries",
+      value: String(failed),
+      hint: "Needs operator review",
+      icon: "warning",
+    },
+    {
+      label: "COD in transit",
+      value: fmtVND(pendingCod),
+      hint: "Not yet delivered",
+      icon: "wallet",
+    },
+    {
+      label: "Last sync",
+      value: lastSync ? fmtDateTime(lastSync) : "Never",
+      hint: "Most recent GHN sync",
+      icon: "sync",
+    },
   ];
 
   return (
