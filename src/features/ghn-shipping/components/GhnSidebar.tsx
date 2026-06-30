@@ -57,7 +57,7 @@ export function GhnSidebar() {
 
       <div className="border-t border-line px-4 py-3">
         <p className="text-[11px] leading-relaxed text-ink-400">
-          Phase-1 UI - mock data only. No live GHN connection.
+          Gateway-backed GHN logistics console.
         </p>
       </div>
     </aside>

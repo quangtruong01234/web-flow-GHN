@@ -1,33 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Field, Input } from "@/components/ui/Input";
-import { useAuth } from "@/context/AuthContext";
+import { isAllowedRole, useAuth } from "@/context/AuthContext";
+import { isApiError } from "@/lib/api";
 
 export function GhnLoginCard() {
-  const { login } = useAuth();
+  const { login, user, ready } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const onSubmit = (event: React.FormEvent) => {
+  // Already signed in (e.g. landed on /login with a live session) → move along.
+  useEffect(() => {
+    if (ready && user && isAllowedRole(user.role)) {
+      const next = searchParams.get("next");
+      router.replace(next && next.startsWith("/") ? next : "/dashboard");
+    }
+  }, [ready, user, router, searchParams]);
+
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setError("Enter both an email and a password to continue.");
+    if (!username.trim() || !password.trim()) {
+      setError("Enter both your username and password to continue.");
       return;
     }
 
     setError(null);
     setBusy(true);
-    window.setTimeout(() => {
-      login(email, password);
-      router.replace("/dashboard");
-    }, 350);
+    try {
+      const user = await login(username.trim(), password);
+      if (!isAllowedRole(user.role)) {
+        router.replace("/403");
+        return;
+      }
+      const next = searchParams.get("next");
+      router.replace(next && next.startsWith("/") ? next : "/dashboard");
+    } catch (err: unknown) {
+      if (isApiError(err)) {
+        setError(
+          err.status === 401
+            ? "Invalid username or password."
+            : err.message || "Sign in failed. Please try again.",
+        );
+      } else {
+        setError("Sign in failed. Please try again.");
+      }
+      setBusy(false);
+    }
   };
 
   return (
@@ -43,13 +69,13 @@ export function GhnLoginCard() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Email or username" htmlFor="email">
+        <Field label="Username" htmlFor="username">
           <Input
-            id="email"
+            id="username"
             autoComplete="username"
-            placeholder="mai.logistics@trybuy.demo"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            placeholder="logistics_test"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
           />
         </Field>
 
@@ -77,8 +103,8 @@ export function GhnLoginCard() {
       </form>
 
       <p className="mt-5 rounded-lg bg-slate-50 px-3 py-2.5 text-[12px] leading-relaxed text-ink-500">
-        Authorized logistics operators only. Demo mode accepts any non-empty
-        email and password and stores no real token.
+        Authorized logistics operators and shipping managers only. The session is
+        kept in a secure HttpOnly cookie — no token is stored in the browser.
       </p>
     </div>
   );

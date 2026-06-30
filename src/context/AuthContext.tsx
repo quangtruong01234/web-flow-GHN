@@ -8,47 +8,70 @@ import {
   useMemo,
   useState,
 } from "react";
+import {
+  authApi,
+  type BackendLoginUser,
+  type BackendMeUser,
+} from "@/lib/auth-api";
 
-export type MockRole = "logistics_operator" | "shipping_manager";
-
-export const ALLOWED_ROLES: MockRole[] = ["logistics_operator", "shipping_manager"];
+/** GHN console roles allowed into the protected area. */
+export const ALLOWED_ROLES: readonly string[] = [
+  "logistics_operator",
+  "shipping_manager",
+];
 
 export interface AuthUser {
+  id: number;
+  username: string;
   name: string;
-  role: MockRole;
-  title: string;
   email: string;
+  /** Raw backend `rol_name`; may be outside ALLOWED_ROLES (e.g. shop/user). */
+  role: string;
+  title: string;
 }
 
-const DEMO_USER: AuthUser = {
-  name: "Trần Thị Mai",
-  role: "logistics_operator",
-  title: "Logistics Operator",
-  email: "mai.logistics@trybuy.demo",
+const ROLE_TITLE: Record<string, string> = {
+  logistics_operator: "Logistics Operator",
+  shipping_manager: "Shipping Manager",
+  shop: "Shop owner",
+  user: "Customer",
 };
 
-const STORAGE_KEY = "ghn.mock.auth";
+function titleForRole(role: string): string {
+  return ROLE_TITLE[role] ?? "Operator";
+}
+
+export function isAllowedRole(role: string | undefined): boolean {
+  return role !== undefined && ALLOWED_ROLES.includes(role);
+}
+
+/** A GHN sync is a status mutation, restricted to shipping managers. */
+export function canSync(role: string | undefined): boolean {
+  return role === "shipping_manager";
+}
 
 interface AuthContextValue {
   user: AuthUser | null;
   ready: boolean;
-  login: (email: string, password: string) => AuthUser;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<AuthUser>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function readStored(): AuthUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser;
-    if (parsed && typeof parsed.email === "string" && parsed.role) return parsed;
-  } catch {
-    return null;
-  }
-  return null;
+// Both `/login` and `/me` return the same user shape (role eager-loaded), so a
+// single mapper drives both paths. No identity is stored in the browser — the
+// credential lives in the HttpOnly cookie and `/me` is authoritative on reload.
+function toAuthUser(backend: BackendLoginUser | BackendMeUser): AuthUser {
+  const role = backend.role?.rol_name ?? "user";
+  return {
+    id: backend.id,
+    username: backend.username,
+    name: backend.name ?? backend.username,
+    email: backend.email,
+    role,
+    title: titleForRole(role),
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -56,27 +79,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setUser(readStored());
-    setReady(true);
+    let active = true;
+
+    authApi
+      .me()
+      .then((me: BackendMeUser) => {
+        if (!active) return;
+        setUser(toAuthUser(me));
+      })
+      .catch(() => {
+        if (!active) return;
+        setUser(null);
+      })
+      .finally(() => {
+        if (active) setReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const login = useCallback((email: string, _password: string) => {
-    const next: AuthUser = { ...DEMO_USER, email: email.trim() || DEMO_USER.email };
+  const login = useCallback(async (username: string, password: string) => {
+    const backend = await authApi.login(username, password);
+    const next = toAuthUser(backend);
     setUser(next);
-    try {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      /* storage may be unavailable; in-memory state still works */
-    }
     return next;
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
+  const logout = useCallback(async () => {
     try {
-      window.sessionStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
+      await authApi.logout();
+    } finally {
+      setUser(null);
     }
   }, []);
 

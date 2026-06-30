@@ -15,8 +15,8 @@ export function GhnTopbar({ title }: { title: string }) {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const onLogout = () => {
-    logout();
+  const onLogout = async () => {
+    await logout();
     router.replace("/login");
   };
 
