@@ -22,7 +22,16 @@ Load the matching source before acting:
 - Login, logout, auth state, roles, route guards → `.ai/context/auth.md`
 - Backend calls, API gateway boundary, env vars → `.ai/context/data-fetching.md`
 - Components, TypeScript, `NEXT_PUBLIC_*` env → `.ai/context/conventions.md`
-- GHN shipment/status semantics (read-only), mock vs. real → `.ai/context/domain.md`
+- GHN shipment/status semantics (backend-owned), mock vs. real → `.ai/context/domain.md`
+- Verifying a change, manual QA checklist, no-new-test-runner rule → `.ai/context/testing.md`
+- End-to-end flows (login, console, sync, roles, error/empty/loading) → `.ai/context/flows.md`
+- Known risks / gaps / not-yet-wired pieces → `.ai/context/risks.md`
+- Commit workflow / `$commit` → `.ai/context/git-workflow.md`
+
+## Repo skills
+
+- `$commit`: create scoped local commits. Read `.ai/context/git-workflow.md` first, group
+  files by scope, commit locally only, and never push.
 
 ## At a glance
 

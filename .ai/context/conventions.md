@@ -18,6 +18,56 @@ interface ShipmentRowProps {
 export function ShipmentRow({ shipment, onSelect }: ShipmentRowProps) { ... }
 ```
 
+## Naming
+
+Names describe purpose. **File** naming (PascalCase components, kebab/camel helpers) lives
+in `.ai/context/structure.md`; this section covers **identifiers** (variables, functions,
+props, payloads).
+
+### Casing
+
+- `camelCase` for variables and functions.
+- `PascalCase` for React components and TypeScript types/interfaces.
+- `UPPER_SNAKE_CASE` **only** for module-level constants (e.g. `ALLOWED_ROLES`, `STORAGE_KEY`).
+
+### Meaningful names
+
+- Use names that describe the value's purpose.
+- Avoid vague names (`a`, `b`, `data`, `result`, `temp`, `value`, `obj`, `arr`, `list`)
+  unless the scope is tiny and the meaning is obvious.
+
+### Booleans
+
+- Must start with `is`, `has`, `can`, `should`, `will`, or `needs` (e.g. `isPending`,
+  `hasGhnCode`, `canSync`, `needsReturn`).
+
+### Collections & maps
+
+- Arrays use **plural** names: `orders`, `shipments`, `selectedItems`.
+- Map/record objects include the key relationship: `orderById`, `statusLabelMap`,
+  `permissionsByRole`.
+
+### Functions & handlers
+
+- Functions start with a verb: `fetchOrders`, `createShipment`, `calculateShippingFee`,
+  `formatCurrency`.
+- Event handlers inside components use `handleX`: `handleSubmit`, `handleStatusChange`.
+- Callback props use `onX`: `onSubmit`, `onStatusChange`. (Matches the existing
+  `onSelect` prop convention above.)
+
+### API payloads & units
+
+- Name request/response objects clearly: `loginPayload`, `loginResponse`,
+  `createShipmentPayload`.
+- Include units when relevant: `timeoutMs`, `priceVnd`, `weightGram`, `retryCount`.
+
+### Domain terms (use consistently)
+
+Prefer `shipment`, `order`, `trackingCode`, `ghnStatus`, `logisticsOperator`,
+`shippingFee`. Keep `GhnStatus` / `LocalStatus` distinct (see `.ai/context/domain.md`) and
+reuse the domain types from `src/features/ghn-shipping/types.ts` rather than coining
+synonyms.
+
 ## TypeScript
 
 - Strict mode — `npm run typecheck` (`tsc --noEmit`) must pass.
@@ -32,7 +82,7 @@ export function ShipmentRow({ shipment, onSelect }: ShipmentRowProps) { ... }
 | -------------------------------------- | ------------------------------------------------------------------- |
 | **Server state** (orders, shipments, me) | **TanStack Query** — see `.ai/context/data-fetching.md`. Never `useState`+`useEffect` to fetch. |
 | **Local UI state** (modal open, tab, input) | `useState` / `useReducer`.                                       |
-| **Global client state** (cross-cutting)  | React Context (`AuthContext`, `ShipmentContext`, `ToastContext`), wired in `src/app/layout.tsx`. Memoize the value with `useMemo`. |
+| **Global client state** (cross-cutting)  | React Context (`AuthContext`, `ToastContext`), wired in `src/app/layout.tsx`. Memoize the value with `useMemo`. |
 | **Complex/shared client state**          | **Zustand** — only when a trigger below is genuinely met.           |
 
 ### Zustand — only when justified

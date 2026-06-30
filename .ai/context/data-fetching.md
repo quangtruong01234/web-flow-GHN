@@ -1,132 +1,115 @@
 # Data Fetching & API Boundary
 
-## The boundary (hard rules)
+## Boundary
 
-- All backend access goes through the **TryBuy Gateway only**: `http://localhost:3000/api`.
+- All backend access goes through the **TryBuy Gateway only**.
 - The frontend must **never** call GHN directly.
-- GHN API key/token, shop ID, webhook secret, and other carrier secrets are **backend-only**.
-  Never reference or expose them in browser-reachable code.
-- Backend repo (reference only, **do not modify** unless the task explicitly says backend):
+- GHN API key/token, shop ID, webhook secret, and other carrier secrets are backend-only.
+- Backend repo is reference-only unless the task explicitly says backend:
   `C:\Users\Quang Truong\Desktop\MCR\api`.
 
-## Backend status — Phase 1 + 1.1 DONE
+## Current state
 
-The GHN endpoints already exist on the gateway and passed runtime checks. They are
-**available but not yet wired into this app** — connect them in the order in `.ai/project.md`,
-not all at once.
+Auth, GHN read screens, shipping history, manual sync, manual actions, waybill edits, and
+demo status are wired through the gateway:
 
-### Available protected endpoints
+| Method + path                                  | Frontend use                              |
+| ---------------------------------------------- | ----------------------------------------- |
+| `POST /api/user/login`                         | `authApi.login`                           |
+| `GET /api/user/me`                             | `authApi.me`, reload hydration            |
+| `POST /api/user/logout`                        | `authApi.logout`                          |
+| `GET /api/order/admin/ghn/orders`              | shipment list/dashboard/history overview  |
+| `GET /api/order/admin/ghn/orders/:id`          | shipment detail                           |
+| `GET /api/order/admin/ghn/orders/:id/history`  | shipment timeline/history                 |
+| `POST /api/order/admin/ghn/orders/:id/sync`    | manual GHN sync                           |
+| `POST /api/order/admin/ghn/orders/:id/cancel`  | manual GHN cancel                         |
+| `POST /api/order/admin/ghn/orders/:id/return`  | manual GHN return                         |
+| `POST /api/order/admin/ghn/orders/:id/update-cod` | update COD before transit              |
+| `POST /api/order/admin/ghn/orders/:id/update-receiver` | update receiver name/phone/street |
+| `POST /api/order/admin/ghn/orders/:id/demo-status` | demo-only status driver                |
 
-| Method + path                                    | Returns                              |
-| ------------------------------------------------ | ------------------------------------ |
-| `GET  /api/order/admin/ghn/orders`               | GHN order list                       |
-| `GET  /api/order/admin/ghn/orders/:id`           | local order + GHN shipment detail    |
-| `POST /api/order/admin/ghn/orders/:id/sync`      | manual GHN status sync               |
-| `GET  /api/order/admin/ghn/orders/:id/history`   | shipping history / timeline          |
+The `admin` segment in GHN paths is the current gateway prefix, not the production frontend
+role name.
 
-> The `admin` segment in these paths is the **current backend grant prefix**, not the
-> long-term role name — see the role gap in `.ai/context/auth.md`.
+Delivery-again is intentionally not available. Demo-status is environment-gated: frontend
+UI is hidden unless `NEXT_PUBLIC_GHN_DEMO_MODE=true`; the backend route still returns
+`403` when `GHN_DEMO_ENDPOINTS_ENABLED` is off.
 
-### Verified backend behavior (rely on these)
+## API client
 
-- Unauthenticated list → **401**.
-- Shop account list → **403**.
-- Admin list / detail / history → **200**.
-- Sync with missing GHN code → **400**.
-- A completed sync writes a shipping-history entry.
-- `delivered` maps the buyer-visible `Order.status` to `completed` (backend-side mapping).
+`src/lib/api.ts` is the single place that calls `fetch`.
 
-## Current phase
+- Default base URL is same-origin `/api`, forwarded by `next.config.mjs` rewrites to the
+  gateway so cookies stay first-party during local Next dev.
+- `NEXT_PUBLIC_API_URL` can override the base URL with an absolute gateway URL when needed.
+- Every request uses `credentials: "include"`.
+- JSON request bodies set `Content-Type: application/json`.
+- 204 / empty body returns `undefined`.
+- 2xx success envelopes are unwrapped from `{ data: T }`.
+- Non-OK responses throw `ApiError` with `status`, `message`, and optional backend
+  `error` code.
 
-- **Phase 1 (Prompt 2):** UI reads from `src/features/ghn-shipping/data/mockShipments.ts`
-  and `ShipmentContext`. No network.
-- **Prompt 3:** connect **auth endpoints only** — `POST /api/user/login`,
-  `POST /api/user/logout`, `GET /api/user/me`. Do **not** connect the shipment endpoints
-  above in this step; leave those screens on mock data.
-- Read-only shipment list/detail/history connect in a later step, then sync, then GHN actions.
+## Auth contracts
 
-## API client shape (when it lands in Prompt 3)
+`POST /api/user/login` request body:
 
-Adapt the main frontend's typed `request<T>()` wrapper (see `handoff/frontend-reference.md`),
-translated to Next conventions:
-
-- Base URL from `process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"`.
-- Every request: `credentials: "include"`, default JSON `Content-Type`.
-- Non-OK responses throw a typed `ApiError`; **401 → redirect to `/login`**, **403 → `/403`**.
-- 204 / empty body → return `undefined`.
-- Unwrap `{ data: T }` envelopes.
-
-Put the client in `src/lib/` (e.g. `src/lib/api.ts`). Keep it the single place that calls `fetch`.
-
-## TanStack Query v5 — server state (installed)
-
-`@tanstack/react-query` v5 is installed. It is the **only** way to fetch/cache server
-state once APIs are connected. Patterns mirror the main frontend.
-
-**Provider (wire once, in a client component before first use — e.g. Prompt 3):**
-
-```ts
-// src/lib/queryClient.ts
-import { QueryClient } from "@tanstack/react-query";
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 1000 * 60, retry: 1, refetchOnWindowFocus: false },
-  },
-});
+```json
+{ "username": "logistics_test", "password": "..." }
 ```
 
-Wrap the app in `<QueryClientProvider client={queryClient}>` via a `"use client"`
-provider mounted in `src/app/layout.tsx` (alongside the existing context providers).
+`POST /api/user/login` and `GET /api/user/me` return a user with a role object:
 
-**Query keys — centralize, never inline `['shipments']`:**
-
-```ts
-// src/hooks/queryKeys.ts
-export const queryKeys = {
-  auth: { me: ["auth", "me"] as const },
-  shipments: {
-    all: ["shipments"] as const,
-    list: (params: ShipmentParams) => ["shipments", "list", params] as const,
-    detail: (orderId: string) => ["shipments", orderId] as const,
-    history: (orderId: string) => ["shipments", orderId, "history"] as const,
+```json
+{
+  "id": 1,
+  "username": "logistics_test",
+  "email": "logistics@example.com",
+  "name": "Logistics Test",
+  "avatar": null,
+  "isActive": true,
+  "role": {
+    "rol_id": 1,
+    "rol_name": "logistics_operator",
+    "rol_slug": "logistics_operator",
+    "rol_status": "active",
+    "rol_description": "",
+    "rol_grants": []
   },
-};
-```
-
-> Note: `Shipment.orderId` is a **string** here (not a numeric id like the main frontend's products) — keep query keys typed as `string`.
-
-**useQuery / useMutation:**
-
-```ts
-export function useShipment(orderId: string) {
-  return useQuery({
-    queryKey: queryKeys.shipments.detail(orderId),
-    queryFn: () => api.shipments.getById(orderId),
-    enabled: Boolean(orderId),         // guard empty param
-  });
-}
-
-export function useSyncShipment() {
-  return useMutation({
-    mutationFn: (orderId: string) => api.shipments.sync(orderId),
-    onSuccess: (_data, orderId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.shipments.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.shipments.history(orderId) });
-    },
-  });
+  "createdAt": "2026-06-27T00:00:00.000Z",
+  "updatedAt": "2026-06-27T00:00:00.000Z"
 }
 ```
 
-**Hard rules:**
+`/me` is authoritative for reload hydration. Do not cache a fallback role in browser
+storage.
 
-- ❌ NO `useState` + `useEffect` to fetch server data. ❌ NO `fetch()` in components — use the `api` client.
-- Mutations use **`isPending`**, not `isLoading` (v5).
-- Always use the `queryKeys.*` factory; invalidate related keys in `onSuccess`.
-- Server state lives in Query, never in a Zustand store or Context.
-- This is the standard for when APIs connect (read-only list/detail/history → sync). In the **current mock phase**, screens still read mock data — don't wire Query to shipment endpoints until that step.
+`POST /api/user/logout` response `data`:
 
-## Notes
+```json
+{ "message": "Logged out successfully" }
+```
 
-- Prefer fetching in server components where possible once APIs are connected; auth `/me`
-  hydration runs client-side via `AuthContext` + a `me` query.
+## TanStack Query v5
+
+Server state must use TanStack Query, not `useState` + `useEffect` and not Context/Zustand.
+
+- Query client is created by `src/lib/queryClient.ts` and mounted in `src/app/providers.tsx`.
+- Query keys are centralized in `src/hooks/queryKeys.ts`.
+- Shipment hooks live in `src/features/ghn-shipping/hooks/useShipments.ts`.
+- Shipment API calls/adapters live in `src/features/ghn-shipping/api/`.
+- Mutations use `isPending`, not `isLoading`.
+- Invalidate related detail/history/list keys after sync, action, waybill edit, or
+  demo-status mutation.
+
+Gateway shipment detail/history/sync calls use the numeric local order id; keep those query
+keys typed as `number`.
+
+## Error handling
+
+- 401 means unauthenticated and should drive the user back to `/login`.
+- 403 means authenticated but unauthorized and should drive the user to `/403`.
+- Demo-status `403` with a disabled message means the environment has not enabled demo
+  endpoints; show an inline/toast notice instead of treating it as role failure.
+- Sync `404` from GHN detail means the waybill is not resolvable and should be surfaced as
+  non-retryable. Sync `503` means GHN is temporarily unavailable and can be retried later.
+- Shipment screens should expose loading/error/empty states from Query results.

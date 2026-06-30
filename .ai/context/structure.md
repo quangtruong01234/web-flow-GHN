@@ -12,7 +12,7 @@
 ```
 src/
 ├── app/                            # Next.js App Router (thin route files only)
-│   ├── layout.tsx                  # Root: AuthProvider + ToastProvider + ShipmentProvider + ToastHost
+│   ├── layout.tsx                  # Root: providers + ToastHost
 │   ├── page.tsx                    # Landing / root redirect
 │   ├── globals.css                 # The ONLY stylesheet
 │   ├── login/page.tsx              # Public login route
@@ -28,11 +28,10 @@ src/
 │       └── settings/page.tsx
 ├── components/
 │   └── ui/                         # Generic primitives: Badge, Button, Card, Icon, Input, Modal
-├── context/                        # Client providers: AuthContext, ShipmentContext, ToastContext
+├── context/                        # Client providers: AuthContext, ToastContext
 ├── features/
 │   └── ghn-shipping/               # The GHN domain boundary — keep GHN code here
 │       ├── components/             # Feature screens & widgets (GhnAdminShell, ShipmentTable, ...)
-│       ├── data/                   # mockShipments.ts (Phase-1 mock data)
 │       ├── lib/                    # shipment-status.ts, shipment-formatters.ts
 │       └── types.ts               # Domain types barrel
 └── lib/

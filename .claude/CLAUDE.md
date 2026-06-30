@@ -15,7 +15,15 @@ Load additional files using the Context Map in `.ai/project.md`:
 - Login, logout, roles, route guards → `.ai/context/auth.md`
 - Backend calls, API gateway boundary, env vars → `.ai/context/data-fetching.md`
 - Components, TypeScript, `NEXT_PUBLIC_*` → `.ai/context/conventions.md`
-- GHN status semantics (read-only), mock vs. real → `.ai/context/domain.md`
+- GHN status semantics (backend-owned), mock vs. real → `.ai/context/domain.md`
+- Verifying a change, manual QA checklist, no-new-test-runner rule → `.ai/context/testing.md`
+- End-to-end flows (login, console, sync, roles, error/empty/loading) → `.ai/context/flows.md`
+- Known risks / gaps / not-yet-wired pieces → `.ai/context/risks.md`
+- Commit workflow / `$commit` → `.ai/context/git-workflow.md`
+
+## Commands
+
+- `$commit` → `.claude/commands/commit.md`
 
 ## Quick commands (Windows-safe — use `.cmd` when `npm.ps1` is blocked)
 
