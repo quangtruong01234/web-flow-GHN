@@ -28,6 +28,12 @@ next-env.d.ts
 # Testing / coverage
 /coverage
 
+# Playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
 # Environment & secrets — never push these
 # (GHN token, shop id, webhook secret, gateway URLs must stay out of git)
 .env
