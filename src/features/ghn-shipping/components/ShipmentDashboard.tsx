@@ -6,6 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { useShipmentList } from "../hooks/useShipments";
 import { ghnStatusDistribution } from "../lib/shipment-status";
 import { cn } from "@/lib/cn";
+import { AnalyticsPanel } from "./AnalyticsPanel";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
 import { ShipmentStatCards } from "./ShipmentStatCards";
@@ -17,6 +18,16 @@ const DASHBOARD_LIMIT = 100;
 const DISTRIBUTION_SEGMENTS = 20;
 
 export function ShipmentDashboard() {
+  return (
+    <div className="space-y-6">
+      <ShipmentOverview />
+      <AnalyticsPanel />
+    </div>
+  );
+}
+
+/** GHN operational overview (newest orders + backend-owned status mix). */
+function ShipmentOverview() {
   const { data, isPending, isError, refetch } = useShipmentList({
     page: 1,
     limit: DASHBOARD_LIMIT,

@@ -1,119 +1,19 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const user = {
-  id: 2,
-  username: "shipmgr_test",
-  email: "shipmgr@example.com",
-  name: "Shipping Manager",
-  avatar: null,
-  isActive: true,
-  role: {
-    rol_id: 2,
-    rol_name: "shipping_manager",
-    rol_slug: "shipping_manager",
-    rol_status: "active",
-    rol_description: "",
-    rol_grants: [],
-  },
-  createdAt: "2026-06-27T00:00:00.000Z",
-  updatedAt: "2026-06-27T00:00:00.000Z",
-};
+import {
+  backendCodUpdateResult,
+  backendDetailResponse,
+  backendHistoryRow,
+  backendMeUser,
+  backendPaginatedList,
+  backendReceiverUpdateResult,
+  backendSyncResult,
+} from "../src/features/ghn-shipping/testing/fixtures";
 
-const detail = {
-  localOrder: {
-    orderId: 101,
-    userId: 7,
-    sellerId: 9,
-    orderStatus: "delivering",
-    ghnOrderCode: "GHN101",
-    shippingAddress: "Receiver One|0900000000|12 Nguyen Trai|Ward 1|District 1|HCMC",
-    shippingFee: 30000,
-    codAmount: 250000,
-    paymentMethod: "cod",
-    total: 280000,
-    items: [
-      {
-        id: 1,
-        orderId: 101,
-        productId: 11,
-        sellerId: 9,
-        productName: "Coffee Beans",
-        productImage: null,
-        quantity: 2,
-        price: 125000,
-        weight: null,
-        skuId: null,
-        skuTierIdx: null,
-        skuLabel: "500g",
-      },
-    ],
-    createdAt: "2026-06-27T08:00:00.000Z",
-    updatedAt: "2026-06-27T09:00:00.000Z",
-  },
-  ghnDetail: {
-    orderCode: "GHN101",
-    status: "delivering",
-    codAmount: 250000,
-    totalFee: 30000,
-    expectedDeliveryTime: "2026-06-28T09:00:00.000Z",
-    leadtime: "2026-06-28T10:00:00.000Z",
-    toName: "Receiver One",
-    toPhone: "0900000000",
-    toAddress: "12 Nguyen Trai",
-    fromName: "TryBuy Warehouse",
-    fromPhone: "0900111222",
-    raw: {},
-  },
-  ghnDetailError: null,
-  lastGhnStatus: "delivering",
-  lastSyncedAt: "2026-06-27T09:30:00.000Z",
-  availableActions: ["sync", "cancel", "return", "update_cod", "update_receiver"],
-  buyer: { id: 7, username: "buyer1", email: "buyer@example.com", name: "Buyer One" },
-  seller: { id: 9, username: "seller1", email: "seller@example.com", name: "Seller One" },
-};
-
-const list = {
-  data: [
-    {
-      orderId: 101,
-      userId: 7,
-      sellerId: 9,
-      orderStatus: "delivering",
-      ghnOrderCode: "GHN101",
-      shippingFee: 30000,
-      codAmount: 250000,
-      paymentMethod: "cod",
-      lastGhnStatus: "delivering",
-      lastSyncedAt: "2026-06-27T09:30:00.000Z",
-      updatedAt: "2026-06-27T09:00:00.000Z",
-      availableActions: ["sync", "cancel", "return", "update_cod", "update_receiver"],
-      buyer: detail.buyer,
-      seller: detail.seller,
-    },
-  ],
-  total: 1,
-  page: 1,
-  limit: 50,
-  totalPages: 1,
-  hasNext: false,
-};
-
-const history = [
-  {
-    id: 1,
-    orderId: 101,
-    type: "manual_sync",
-    actorId: 2,
-    action: "sync",
-    previousStatus: "shipped",
-    newStatus: "delivering",
-    ghnStatus: "delivering",
-    success: true,
-    message: "Synced from GHN",
-    payloadSummary: null,
-    createdAt: "2026-06-27T09:30:00.000Z",
-  },
-];
+const user = backendMeUser("shipping_manager");
+const detail = backendDetailResponse();
+const list = backendPaginatedList();
+const history = [backendHistoryRow({ previousStatus: "shipped" })];
 
 interface GatewayOptions {
   syncStatus?: number;
@@ -160,15 +60,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       }
       await route.fulfill({
         status: 201,
-        json: {
-          data: {
-            orderId: 101,
-            previousStatus: "delivering",
-            newStatus: "delivering",
-            ghnStatus: "delivering",
-            syncedAt: "2026-06-27T10:00:00.000Z",
-          },
-        },
+        json: { data: backendSyncResult() },
       });
       return;
     }
@@ -177,18 +69,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       expect(request.postDataJSON()).toEqual({ codAmount: 0 });
       await route.fulfill({
         status: 201,
-        json: {
-          data: {
-            orderId: 101,
-            action: "update_cod",
-            ghnOrderCode: "GHN101",
-            previousCodAmount: 250000,
-            newCodAmount: 0,
-            success: true,
-            message: "COD updated",
-            actionedAt: "2026-06-27T10:01:00.000Z",
-          },
-        },
+        json: { data: backendCodUpdateResult() },
       });
       return;
     }
@@ -197,18 +78,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       expect(request.postDataJSON()).toEqual({ toName: "Receiver Two" });
       await route.fulfill({
         status: 201,
-        json: {
-          data: {
-            orderId: 101,
-            action: "update_receiver",
-            ghnOrderCode: "GHN101",
-            shippingAddress: "Receiver Two|0900000000|12 Nguyen Trai|Ward 1|District 1|HCMC",
-            updatedFields: ["toName"],
-            success: true,
-            message: "Receiver updated",
-            actionedAt: "2026-06-27T10:02:00.000Z",
-          },
-        },
+        json: { data: backendReceiverUpdateResult() },
       });
       return;
     }
@@ -225,13 +95,11 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       await route.fulfill({
         status: 201,
         json: {
-          data: {
-            orderId: 101,
-            previousStatus: "delivering",
+          data: backendSyncResult({
             newStatus: "completed",
             ghnStatus: "delivered",
             syncedAt: "2026-06-27T10:03:00.000Z",
-          },
+          }),
         },
       });
       return;

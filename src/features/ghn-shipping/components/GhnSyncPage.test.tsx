@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { ApiError } from "@/lib/api";
-import type { ShipmentListItem, ShipmentListView, ShipmentSyncView } from "../api/types";
+import type { ShipmentSyncView } from "../api/types";
+import { authUser, shipmentListView, shipmentSyncView } from "../testing/fixtures";
 import { useShipmentList, useSyncShipment } from "../hooks/useShipments";
 import { GhnSyncPage } from "./GhnSyncPage";
 
@@ -26,31 +27,7 @@ interface ShipmentSyncOptions {
   onError?: (error: unknown) => void;
 }
 
-const shipmentItem: ShipmentListItem = {
-  orderId: 101,
-  ghnOrderCode: "GHN101",
-  buyerName: "Buyer One",
-  sellerName: "Seller One",
-  localStatus: "shipping",
-  ghnStatus: "delivering",
-  rawGhnStatus: "delivering",
-  codAmount: 250000,
-  shippingFee: 30000,
-  paymentMethod: "cod",
-  lastSyncedAt: "2026-06-27T09:30:00.000Z",
-  updatedAt: "2026-06-27T09:45:00.000Z",
-  canSync: true,
-  availableActions: ["read", "history", "sync"],
-};
-
-const listFixture: ShipmentListView = {
-  items: [shipmentItem],
-  total: 1,
-  page: 1,
-  limit: 50,
-  totalPages: 1,
-  hasNext: false,
-};
+const listFixture = shipmentListView();
 
 describe("GhnSyncPage", () => {
   const useAuthMock = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -82,14 +59,7 @@ describe("GhnSyncPage", () => {
 
   it("renders syncable rows but disables sync for logistics operators", () => {
     useAuthMock.mockReturnValue({
-      user: {
-        id: 1,
-        username: "logistics_test",
-        name: "Logistics Operator",
-        email: "logistics@example.com",
-        role: "logistics_operator",
-        title: "Logistics Operator",
-      },
+      user: authUser("logistics_operator"),
       ready: true,
       login: jest.fn(),
       logout: jest.fn(),
@@ -104,26 +74,13 @@ describe("GhnSyncPage", () => {
 
   it("lets shipping managers sync an eligible shipment", async () => {
     useAuthMock.mockReturnValue({
-      user: {
-        id: 2,
-        username: "shipmgr_test",
-        name: "Shipping Manager",
-        email: "shipmgr@example.com",
-        role: "shipping_manager",
-        title: "Shipping Manager",
-      },
+      user: authUser("shipping_manager"),
       ready: true,
       login: jest.fn(),
       logout: jest.fn(),
     });
     mutateMock.mockImplementation((_orderId, options) => {
-      options?.onSuccess?.({
-        orderId: 101,
-        previousStatus: "shipping",
-        newStatus: "shipping",
-        ghnStatus: "delivering",
-        syncedAt: "2026-06-27T10:00:00.000Z",
-      });
+      options?.onSuccess?.(shipmentSyncView());
     });
 
     render(<GhnSyncPage />);
@@ -143,14 +100,7 @@ describe("GhnSyncPage", () => {
 
   it("shows retryable copy for transient GHN sync failures", async () => {
     useAuthMock.mockReturnValue({
-      user: {
-        id: 2,
-        username: "shipmgr_test",
-        name: "Shipping Manager",
-        email: "shipmgr@example.com",
-        role: "shipping_manager",
-        title: "Shipping Manager",
-      },
+      user: authUser("shipping_manager"),
       ready: true,
       login: jest.fn(),
       logout: jest.fn(),

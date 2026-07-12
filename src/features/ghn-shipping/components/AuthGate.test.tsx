@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider } from "@/context/AuthContext";
-import { authApi, type BackendMeUser } from "@/lib/auth-api";
+import { authApi } from "@/lib/auth-api";
+import { backendMeUser } from "../testing/fixtures";
 import { AuthGate } from "./AuthGate";
 
 const replaceMock = jest.fn();
@@ -17,27 +18,6 @@ jest.mock("@/lib/auth-api", () => ({
     me: jest.fn(),
   },
 }));
-
-function userWithRole(role: NonNullable<BackendMeUser["role"]>["rol_name"]): BackendMeUser {
-  return {
-    id: 1,
-    username: "logistics_test",
-    email: "logistics@example.com",
-    name: "Logistics Test",
-    avatar: null,
-    isActive: true,
-    role: {
-      rol_id: 10,
-      rol_name: role,
-      rol_slug: role,
-      rol_status: "active",
-      rol_description: "",
-      rol_grants: [],
-    },
-    createdAt: "2026-06-27T00:00:00.000Z",
-    updatedAt: "2026-06-27T00:00:00.000Z",
-  };
-}
 
 function renderGate(): void {
   render(
@@ -57,7 +37,7 @@ describe("AuthGate", () => {
   });
 
   it("renders protected content for an allowed logistics role", async () => {
-    meMock.mockResolvedValue(userWithRole("logistics_operator"));
+    meMock.mockResolvedValue(backendMeUser("logistics_operator"));
 
     renderGate();
 
@@ -76,7 +56,7 @@ describe("AuthGate", () => {
   });
 
   it("redirects authenticated users with a disallowed role to forbidden", async () => {
-    meMock.mockResolvedValue(userWithRole("shop"));
+    meMock.mockResolvedValue(backendMeUser("shop"));
 
     renderGate();
 

@@ -6,7 +6,14 @@ import {
   toReceiverUpdateView,
   toShipmentListItem,
 } from "./adapters";
-import type { BackendGhnListItem } from "./types";
+import {
+  backendActionResult,
+  backendBuyer,
+  backendCodUpdateResult,
+  backendListItem,
+  backendReceiverUpdateResult,
+  backendSeller,
+} from "../testing/fixtures";
 
 describe("mapOrderStatusToLocal", () => {
   it("maps in-transit backend statuses to 'shipping'", () => {
@@ -51,16 +58,14 @@ describe("mapGhnStatus", () => {
 
 describe("toActionView", () => {
   it("adapts cancel/return results and maps backend canceled to local cancelled", () => {
-    const result = toActionView({
-      orderId: 110,
-      action: "return",
-      ghnOrderCode: "GHN110",
-      previousStatus: "delivering",
-      newStatus: "canceled",
-      success: true,
-      message: "Return requested",
-      actionedAt: "2026-06-28T04:00:00.000Z",
-    });
+    const result = toActionView(
+      backendActionResult({
+        orderId: 110,
+        action: "return",
+        ghnOrderCode: "GHN110",
+        message: "Return requested",
+      }),
+    );
 
     expect(result.action).toBe("return");
     expect(result.previousStatus).toBe("shipping");
@@ -71,16 +76,9 @@ describe("toActionView", () => {
 
 describe("toCodUpdateView", () => {
   it("passes through the COD amounts and success flag", () => {
-    const view = toCodUpdateView({
-      orderId: 110,
-      action: "update_cod",
-      ghnOrderCode: "GHN110",
-      previousCodAmount: 250000,
-      newCodAmount: 0,
-      success: true,
-      message: "COD updated",
-      actionedAt: "2026-06-28T04:00:00.000Z",
-    });
+    const view = toCodUpdateView(
+      backendCodUpdateResult({ orderId: 110, ghnOrderCode: "GHN110" }),
+    );
     expect(view.orderId).toBe(110);
     expect(view.previousCodAmount).toBe(250000);
     expect(view.newCodAmount).toBe(0);
@@ -90,16 +88,14 @@ describe("toCodUpdateView", () => {
 
 describe("toReceiverUpdateView", () => {
   it("passes through the updated fields and shipping address", () => {
-    const view = toReceiverUpdateView({
-      orderId: 110,
-      action: "update_receiver",
-      ghnOrderCode: "GHN110",
-      shippingAddress: "Lan|0900000000|12 Lê Lợi|Ward|District|Province",
-      updatedFields: ["toName", "toAddress"],
-      success: true,
-      message: "Receiver updated",
-      actionedAt: "2026-06-28T04:00:00.000Z",
-    });
+    const view = toReceiverUpdateView(
+      backendReceiverUpdateResult({
+        orderId: 110,
+        ghnOrderCode: "GHN110",
+        shippingAddress: "Lan|0900000000|12 Lê Lợi|Ward|District|Province",
+        updatedFields: ["toName", "toAddress"],
+      }),
+    );
     expect(view.updatedFields).toEqual(["toName", "toAddress"]);
     expect(view.shippingAddress).toContain("Lê Lợi");
     expect(view.success).toBe(true);
@@ -107,22 +103,13 @@ describe("toReceiverUpdateView", () => {
 });
 
 describe("toShipmentListItem", () => {
-  const base: BackendGhnListItem = {
+  const base = backendListItem({
     orderId: 42,
-    userId: 7,
-    sellerId: 9,
-    orderStatus: "delivering",
     ghnOrderCode: "GHN123",
-    shippingFee: 30000,
-    codAmount: 250000,
-    paymentMethod: "cod",
-    lastGhnStatus: "delivering",
-    lastSyncedAt: "2026-06-27T08:00:00.000Z",
-    updatedAt: "2026-06-27T09:00:00.000Z",
     availableActions: ["read", "history", "sync"],
-    buyer: { id: 7, username: "buyer1", email: "b@x.com", name: "Nguyễn An" },
-    seller: { id: 9, username: "seller1", email: "s@x.com", name: null },
-  };
+    buyer: backendBuyer({ name: "Nguyễn An" }),
+    seller: backendSeller({ name: null }),
+  });
 
   it("adapts the row and resolves names with fallbacks", () => {
     const row = toShipmentListItem(base);

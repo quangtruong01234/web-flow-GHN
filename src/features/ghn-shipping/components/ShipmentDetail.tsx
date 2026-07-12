@@ -30,7 +30,12 @@ import {
   GHN_STATUS_ORDER,
   rawGhnLabel,
 } from "../lib/shipment-status";
-import { syncErrorCopy } from "../lib/sync-errors";
+import {
+  actionErrorCopy,
+  demoErrorCopy,
+  editErrorCopy,
+  syncErrorCopy,
+} from "../lib/mutation-errors";
 import type { ShipmentDetailView, ShipmentManualAction } from "../api/types";
 import type { GhnStatus } from "../types";
 import { ErrorState } from "./ErrorState";
@@ -356,19 +361,8 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
           });
         },
         onError: (error: unknown) => {
-          const message = isApiError(error)
-            ? error.message
-            : "The action request failed. Try again in a moment.";
-          const rejectedByGhn = isApiError(error) && error.status === 500;
-          push({
-            kind: "error",
-            title: rejectedByGhn
-              ? "GHN rejected the action"
-              : `${ACTION_LABEL[actionKey]} failed`,
-            message: rejectedByGhn
-              ? `${message} The local order was not changed; the failed attempt is recorded in history.`
-              : message,
-          });
+          const copy = actionErrorCopy(error, ACTION_LABEL[actionKey]);
+          push({ kind: "error", title: copy.title, message: copy.message });
         },
       },
     );
@@ -545,19 +539,7 @@ function DemoStatusControl({
           });
         },
         onError: (error: unknown) => {
-          const disabled =
-            isApiError(error) &&
-            error.status === 403 &&
-            /disabled/i.test(error.message);
-          push({
-            kind: disabled ? "info" : "error",
-            title: disabled ? "Demo mode not enabled" : "Demo status failed",
-            message: disabled
-              ? "The demo-status endpoint is disabled in this environment. Set GHN_DEMO_ENDPOINTS_ENABLED=true on the backend and restart it."
-              : isApiError(error)
-                ? error.message
-                : "The demo request failed. Try again in a moment.",
-          });
+          push(demoErrorCopy(error));
         },
       },
     );
@@ -794,15 +776,6 @@ function handleEditError(
   what: string,
   push: ReturnType<typeof useToast>["push"],
 ): void {
-  const message = isApiError(error)
-    ? error.message
-    : "The request failed. Try again in a moment.";
-  const rejectedByGhn = isApiError(error) && error.status === 500;
-  push({
-    kind: "error",
-    title: rejectedByGhn ? "GHN rejected the edit" : `${what} update failed`,
-    message: rejectedByGhn
-      ? `${message} The order was not changed; the failed attempt is recorded in history.`
-      : message,
-  });
+  const copy = editErrorCopy(error, what);
+  push({ kind: "error", title: copy.title, message: copy.message });
 }

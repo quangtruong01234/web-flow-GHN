@@ -9,7 +9,7 @@ import { useToast } from "@/context/ToastContext";
 import { useShipmentList, useSyncShipment } from "../hooks/useShipments";
 import { fmtDateTime } from "../lib/shipment-formatters";
 import { rawGhnLabel } from "../lib/shipment-status";
-import { syncErrorCopy } from "../lib/sync-errors";
+import { syncErrorCopy } from "../lib/mutation-errors";
 import type { ShipmentListItem } from "../api/types";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";

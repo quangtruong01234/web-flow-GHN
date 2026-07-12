@@ -5,12 +5,16 @@ import { useToast } from "@/context/ToastContext";
 import { ApiError } from "@/lib/api";
 import type {
   ShipmentActionView,
-  ShipmentDetailView,
-  ShipmentHistoryRow,
   ShipmentManualAction,
   SetDemoStatusInput,
   ShipmentSyncView,
 } from "../api/types";
+import {
+  authUser,
+  shipmentDetailView,
+  shipmentHistoryRow,
+  shipmentSyncView,
+} from "../testing/fixtures";
 import {
   useShipmentAction,
   useShipmentDetail,
@@ -57,67 +61,12 @@ interface SetDemoStatusMutationInput {
   body: SetDemoStatusInput;
 }
 
-const detailFixture: ShipmentDetailView = {
-  orderId: 101,
-  ghnOrderCode: "GHN101",
-  localStatus: "shipping",
+const detailFixture = shipmentDetailView({
   ghnStatus: "delivery_fail",
   rawGhnStatus: "delivery_fail",
-  buyerName: "Buyer One",
-  buyerEmail: "buyer@example.com",
-  sellerName: "Seller One",
-  receiver: {
-    name: "Receiver One",
-    phone: "0900000000",
-    address: "12 Nguyen Trai",
-    ward: "Ward 1",
-    district: "District 1",
-    province: "HCMC",
-  },
-  paymentMethod: "cod",
-  codAmount: 250000,
-  shippingFee: 30000,
-  total: 280000,
-  items: [
-    {
-      id: 1,
-      name: "Coffee Beans",
-      image: null,
-      quantity: 2,
-      unitPrice: 125000,
-      skuLabel: "500g",
-    },
-  ],
-  productSummary: "Coffee Beans x2",
-  createdAt: "2026-06-27T08:00:00.000Z",
-  updatedAt: "2026-06-27T09:00:00.000Z",
-  lastSyncedAt: "2026-06-27T09:30:00.000Z",
-  ghn: {
-    expected: "2026-06-28T09:00:00.000Z",
-    leadtime: "2026-06-28T10:00:00.000Z",
-    totalFee: 30000,
-    fromName: "TryBuy Warehouse",
-    fromPhone: "0900111222",
-  },
-  ghnDetailError: null,
-  canSync: true,
-  availableActions: ["sync", "cancel", "return"],
-};
+});
 
-const historyFixture: ShipmentHistoryRow[] = [
-  {
-    id: 1,
-    type: "manual_sync",
-    action: "sync",
-    previousStatus: "processing",
-    newStatus: "delivering",
-    ghnStatus: "delivery_fail",
-    success: true,
-    message: "Synced from GHN",
-    actorId: 7,
-    createdAt: "2026-06-27T09:30:00.000Z",
-  },
-];
+const historyFixture = [shipmentHistoryRow({ ghnStatus: "delivery_fail" })];
 
 describe("ShipmentDetail", () => {
   const useAuthMock = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -152,14 +101,7 @@ describe("ShipmentDetail", () => {
     jest.clearAllMocks();
     delete process.env.NEXT_PUBLIC_GHN_DEMO_MODE;
     useAuthMock.mockReturnValue({
-      user: {
-        id: 1,
-        username: "shipmgr_test",
-        name: "Shipping Manager",
-        email: "shipmgr@example.com",
-        role: "shipping_manager",
-        title: "Shipping Manager",
-      },
+      user: authUser("shipping_manager"),
       ready: true,
       login: jest.fn(),
       logout: jest.fn(),
@@ -248,13 +190,7 @@ describe("ShipmentDetail", () => {
 
   it("syncs through the mutation hook and reports success", async () => {
     syncMutateMock.mockImplementation((_orderId, options) => {
-      options?.onSuccess?.({
-        orderId: 101,
-        previousStatus: "shipping",
-        newStatus: "shipping",
-        ghnStatus: "delivering",
-        syncedAt: "2026-06-27T10:00:00.000Z",
-      });
+      options?.onSuccess?.(shipmentSyncView());
     });
     render(<ShipmentDetail orderId={101} />);
 
@@ -301,13 +237,7 @@ describe("ShipmentDetail", () => {
   it("applies a demo status through the demo mutation when enabled", async () => {
     process.env.NEXT_PUBLIC_GHN_DEMO_MODE = "true";
     demoMutateMock.mockImplementation((_input, options) => {
-      options?.onSuccess?.({
-        orderId: 101,
-        previousStatus: "shipping",
-        newStatus: "shipping",
-        ghnStatus: "waiting_to_return",
-        syncedAt: "2026-06-27T10:00:00.000Z",
-      });
+      options?.onSuccess?.(shipmentSyncView({ ghnStatus: "waiting_to_return" }));
     });
 
     render(<ShipmentDetail orderId={101} />);

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import type { ShipmentListItem, ShipmentListView } from "../api/types";
+import { shipmentListView } from "../testing/fixtures";
 import { useShipmentList } from "../hooks/useShipments";
 import { ShipmentTable } from "./ShipmentTable";
 
@@ -7,31 +7,7 @@ jest.mock("../hooks/useShipments", () => ({
   useShipmentList: jest.fn(),
 }));
 
-const shipmentItem: ShipmentListItem = {
-  orderId: 101,
-  ghnOrderCode: "GHN101",
-  buyerName: "Buyer One",
-  sellerName: "Seller One",
-  localStatus: "shipping",
-  ghnStatus: "delivering",
-  rawGhnStatus: "delivering",
-  codAmount: 250000,
-  shippingFee: 30000,
-  paymentMethod: "cod",
-  lastSyncedAt: "2026-06-27T09:30:00.000Z",
-  updatedAt: "2026-06-27T09:45:00.000Z",
-  canSync: true,
-  availableActions: ["read", "history", "sync"],
-};
-
-const listFixture: ShipmentListView = {
-  items: [shipmentItem],
-  total: 1,
-  page: 1,
-  limit: 20,
-  totalPages: 1,
-  hasNext: false,
-};
+const listFixture = shipmentListView({ limit: 20 });
 
 describe("ShipmentTable", () => {
   const useShipmentListMock = useShipmentList as jest.MockedFunction<typeof useShipmentList>;
