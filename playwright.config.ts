@@ -2,7 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 // E2E specs live in ./e2e and run against the dev server on port 3013.
 // Playwright starts the dev server automatically (reusing one if already up).
+// Set E2E_BASE_URL to target a server on another port (e.g. when 3013 is taken).
 process.env.NEXT_PUBLIC_GHN_DEMO_MODE ??= "true";
+
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3013";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -11,7 +14,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3013",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -24,7 +27,7 @@ export default defineConfig({
     ? undefined
     : {
         command: "npm.cmd run dev",
-        url: "http://localhost:3013",
+        url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },

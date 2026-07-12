@@ -2,6 +2,9 @@
   "name": "trybuy-ghn-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "next dev -p 3013",
     "dev:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restart-dev-3013.ps1",
@@ -12,7 +15,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "e2e": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-e2e.ps1",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "verify:e2e": "npm run verify && npm run e2e"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.1",

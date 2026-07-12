@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $Port = 3013
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $BaseUrl = "http://localhost:$Port"
-$StartedJob = $null
+$StartedProcess = $null
 
 function Test-DevServerReady {
   try {
@@ -19,11 +19,10 @@ Set-Location $RepoRoot
 try {
   if (-not (Test-DevServerReady)) {
     Write-Host "Starting temporary Next.js dev server on $BaseUrl..."
-    $StartedJob = Start-Job -ScriptBlock {
-      param($workdir)
-      Set-Location -LiteralPath $workdir
-      & npm.cmd run dev
-    } -ArgumentList $RepoRoot.Path
+    # Start-Process (not Start-Job): Stop-Job does not kill the child node
+    # process on Windows, which leaks a dev server on the port after the run.
+    $StartedProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" `
+      -WorkingDirectory $RepoRoot.Path -WindowStyle Hidden -PassThru
 
     $deadline = (Get-Date).AddSeconds(90)
     while ((Get-Date) -lt $deadline) {
@@ -34,7 +33,6 @@ try {
     }
 
     if (-not (Test-DevServerReady)) {
-      Receive-Job -Job $StartedJob -Keep
       throw "Dev server did not become ready on $BaseUrl."
     }
   } else {
@@ -45,8 +43,8 @@ try {
   & npx.cmd playwright test
   exit $LASTEXITCODE
 } finally {
-  if ($null -ne $StartedJob) {
-    Stop-Job -Job $StartedJob -ErrorAction SilentlyContinue
-    Remove-Job -Job $StartedJob -Force -ErrorAction SilentlyContinue
+  if ($null -ne $StartedProcess) {
+    # /T kills the whole tree (npm.cmd -> node next dev -> start-server child).
+    & taskkill /PID $StartedProcess.Id /T /F | Out-Null
   }
 }
