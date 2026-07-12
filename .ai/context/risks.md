@@ -3,6 +3,11 @@
 Living list of current risks, gaps, and recently resolved items. Update this when a risk is
 resolved or a new one appears.
 
+> Also check `../.agent-local/frontend-handoff-ghn.md` (backend → GHN console inbox,
+> machine-local at the `MCR/` root — never commit it): **Open** entries there are
+> backend-shipped changes awaiting console integration and count as open backlog
+> alongside this file.
+
 Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/area.**
 
 ## 1. Mock auth stored in `sessionStorage` - RESOLVED (2026-06-28)

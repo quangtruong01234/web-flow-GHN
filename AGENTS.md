@@ -32,17 +32,20 @@ Load the matching source before acting:
 
 - `$commit`: create scoped local commits. Read `.ai/context/git-workflow.md` first, group
   files by scope, commit locally only, and never push.
+- `$sweep`: weekly backlog sweep. Read `.ai/workflows/sweep.md` first, then fix the top
+  open item(s) from `.ai/context/risks.md` + `../.agent-local/frontend-handoff-ghn.md`
+  end-to-end (`$sweep`, `$sweep 3`), audit-only (`$sweep audit`), or propose features
+  (`$sweep propose`).
 
 ## At a glance
 
 - Standalone **Next.js 15 (App Router) + React 19 + TypeScript** GHN logistics console; source at the repo root.
 - Dev port **3013** (use `npm.cmd run dev` on Windows if `npm.ps1` is blocked). Never use port `3002`.
 - Backend access through the **TryBuy Gateway only** (`http://localhost:3000/api`); never call GHN directly; carrier secrets stay backend-only. Backend repo `C:\Users\Quang Truong\Desktop\MCR\api` — do not modify unless the task says backend.
-- Backend Phase 1 + 1.1 are **done**: GHN list/detail/sync/history endpoints exist under `/api/order/admin/ghn/...` (available, connect in sequence — see `.ai/context/data-fetching.md`).
-- Roles: `logistics_operator`, `shipping_manager` (no generic `admin`, no `shipper`). Those roles aren't in the backend yet — API testing may temporarily use `admin`; never hardcode `admin` as the production role (`.ai/context/auth.md`).
-- Current phase: UI mock-data only; Prompt 3 connects auth (`/user/login|logout|me`) only — no shipment/GHN APIs yet.
+- Auth (login/me/logout, HttpOnly cookie), shipment list/detail/history, manual sync, cancel/return/update-COD/update-receiver, and demo-status are **wired to the gateway** (`/api/order/admin/ghn/...` — see `.ai/context/data-fetching.md`). Delivery-again is intentionally not available.
+- Roles: `logistics_operator`, `shipping_manager` exist in the backend with test accounts (no generic `admin` as the production role, no `shipper` — `.ai/context/auth.md`).
 - App lives at the repo root — do not recreate a `web/` subfolder. Validate with `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`.
-- `TryBuy Shipping Dashboard/` is a visual reference export (`support.js` must never be imported/executed); see `handoff/frontend-reference.md` and `handoff/ghn-next-admin-plan.md`.
+- `TryBuy Shipping Dashboard/` is a visual reference export (`support.js` must never be imported/executed); see `handoff/snapshot.md`. Done tasks are logged in `handoff/CHANGELOG.md`.
 
 ## Maintenance
 

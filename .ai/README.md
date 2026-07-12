@@ -8,6 +8,7 @@ Codex, Claude Code, and any other AI agent working in this repo. It mirrors the
 - `context/`: engineering rules loaded by task area
   - `core.md`: always-loaded hard rules
   - `structure.md`, `styling.md`, `auth.md`, `data-fetching.md`, `conventions.md`, `domain.md`: loaded by task
+- `workflows/`: reusable workflow protocols (`sweep.md` — weekly backlog sweep)
 
 ## Tool entry points (adapters — do not duplicate rules into them)
 

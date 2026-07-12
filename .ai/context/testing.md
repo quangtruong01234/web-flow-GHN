@@ -5,7 +5,7 @@ Read this before claiming work is done.
 ## Current runners
 
 - Scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `test:watch`, `e2e`,
-  `e2e:ui`.
+  `e2e:ui`, `verify`, `verify:e2e`.
 - Jest + Testing Library run unit tests at `src/**/*.test.{ts,tsx}` via `npm.cmd test`.
 - Playwright runs E2E specs in `e2e/` via `npm.cmd run e2e`.
 - Playwright config auto-starts the dev server on port 3013.
@@ -40,10 +40,19 @@ Passwords live in the accounts file. Pass them through env vars such as `E2E_USE
 Run from the repo root:
 
 ```bash
+npm.cmd run verify       # lint -> typecheck -> test -> build, sequential
+npm.cmd run verify:e2e   # verify + Playwright E2E (needs browsers installed)
+```
+
+`verify` runs the steps **sequentially on purpose** — never run `tsc` in parallel with
+`next build`; they race on `.next/types`. The individual scripts still exist if you need
+one step:
+
+```bash
 npm.cmd run lint
-npm.cmd run build
 npx.cmd tsc --noEmit
 npm.cmd test
+npm.cmd run build
 ```
 
 Never mark work done with lint, build, TypeScript, or Jest errors.
@@ -72,6 +81,25 @@ Reminder: GHN status is backend-owned — the frontend never calls GHN directly 
 fabricates status, but it may drive status through the backend. Manual sync/cancel/return
 COD/receiver edits, and the demo-status endpoint are real backend requests. Delivery-again
 must not be built.
+
+## Demo-mode QA checklist
+
+Prerequisites: FE `.env.local` has `NEXT_PUBLIC_GHN_DEMO_MODE=true`; backend env has
+`GHN_DEMO_ENDPOINTS_ENABLED=true` (orders service restarted after setting it). Log in as
+`shipmgr_test` and open a shipment detail with a GHN code.
+
+1. **Visibility** — the amber "Demo controls" block appears in the action panel. With
+   `NEXT_PUBLIC_GHN_DEMO_MODE` unset/false it must be absent entirely.
+2. **Role gating** — as `logistics_test` the demo control is disabled (read-only role).
+3. **Lifecycle** — apply `picking → delivering → delivered` in order. After each apply:
+   the GHN status badge advances, local status follows the backend mapping
+   (`picking`→shipped, `delivering`→shipping/delivering, `delivered`→completed), and a
+   `demo_status` row appears at the top of the history timeline.
+4. **No-op guard** — the picker never offers the order's current GHN status.
+5. **Disabled environment** — with backend `GHN_DEMO_ENDPOINTS_ENABLED` off, applying
+   shows the info toast "Demo mode not enabled" (never a redirect to `/403`).
+6. **List/dashboard consistency** — after the demo run, `/shipments` and `/dashboard`
+   reflect the new statuses (query invalidation worked).
 
 ## What to check after UI changes
 

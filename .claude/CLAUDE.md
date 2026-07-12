@@ -24,6 +24,7 @@ Load additional files using the Context Map in `.ai/project.md`:
 ## Commands
 
 - `$commit` → `.claude/commands/commit.md`
+- `/sweep` → `.claude/commands/sweep.md` — weekly backlog sweep: fix top item(s) from `.ai/context/risks.md` + `../.agent-local/frontend-handoff-ghn.md` (`/sweep`, `/sweep 3`), audit-only (`/sweep audit`), or propose features (`/sweep propose`). Canonical workflow: `.ai/workflows/sweep.md`.
 
 ## Quick commands (Windows-safe — use `.cmd` when `npm.ps1` is blocked)
 

@@ -9,3 +9,8 @@ Then:
 4. Create separate local commits following the format in `git-workflow.md`.
 5. Do not push.
 6. Report the list of commits created.
+
+For `$commit --auto`, treat the request as commit-only automation. Do not edit source,
+tests, docs, config, formatting, or generated files. If verification fails or inspection
+finds a likely blocker, stop before staging and report the blocker; wait for a separate fix
+request before changing files.

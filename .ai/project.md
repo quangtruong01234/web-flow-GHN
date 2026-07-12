@@ -36,6 +36,10 @@ Treat every rule in those files as active project guidance.
 - Manual GHN cancel, return, update COD, update receiver info, and demo-status are wired
   to backend gateway routes and driven by `availableActions` / demo-mode gating.
   Delivery-again is intentionally not available.
+- The business analytics dashboard (`GET /api/order/admin/analytics`) is wired on
+  `/dashboard` (`AnalyticsPanel`): summary KPIs, revenue over time, status distribution,
+  top products. Readable by `logistics_operator` — do not gate it behind
+  `shipping_manager`.
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`.
 
 ## Next task order
@@ -70,12 +74,14 @@ Treat every rule in those files as active project guidance.
 | End-to-end flows (login, console, sync, roles, error/empty/loading)     | `.ai/context/flows.md`         |
 | Known risks / gaps / not-yet-wired pieces                               | `.ai/context/risks.md`         |
 | Commit workflow / `$commit`                                             | `.ai/context/git-workflow.md`  |
+| Weekly backlog sweep / `$sweep` (fix top backlog item, audit, propose)  | `.ai/workflows/sweep.md`       |
 
 ## References (read-only)
 
-- `handoff/ghn-next-admin-plan.md` - implementation plan for this app.
-- `handoff/frontend-reference.md` - patterns to reuse from the main TryBuy frontend.
-  Read it before adding API, auth, routing, styling, or shared utility patterns.
+- `handoff/snapshot.md` - merged historical snapshot: the original implementation plan
+  for this app + patterns to reuse from the main TryBuy frontend. Read it before adding
+  API, auth, routing, styling, or shared utility patterns.
+- `handoff/CHANGELOG.md` - log of done tasks for this console (newest first).
 - `handoff/design-reference.md` - design context, if present.
 - `TryBuy Shipping Dashboard/GHN Shipping Control Panel.dc.html` - Claude Design source,
   visual reference only.

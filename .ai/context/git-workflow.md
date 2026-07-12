@@ -27,6 +27,12 @@ Use the narrowest scope that describes the commit:
 - Never commit unless the user explicitly asks for `$commit` or otherwise asks to commit.
 - Do not push. Local commits only.
 - Run `git status` first and inspect changed files.
+- `$commit --auto` is commit-only automation: inspect, group, verify, stage, and commit
+  the existing working tree. Do not edit source, tests, docs, config, formatting, or
+  generated files while handling it.
+- If validation fails, or inspection finds a likely bug/convention violation, stop before
+  staging and report the exact blocker. Ask for a separate fix request instead of changing
+  files under `$commit --auto`.
 - Group unrelated changes into separate commits by scope.
 - Do not commit `.env`, `.next/`, `node_modules/`, Playwright reports, test results, or
   generated local artifacts.
