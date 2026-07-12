@@ -12,13 +12,14 @@ body {
 }
 
 body {
-  background-color: #f1f3f6;
-  color: #0f172a;
-  -webkit-font-smoothing: antialiased;
+  @apply bg-canvas text-ink-900 antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Thin, unobtrusive scrollbars for the horizontally scrolling tables. */
+/* Thin, unobtrusive scrollbars for the horizontally scrolling tables.
+   The thumb color is a documented token exception: it sits between `line`
+   (#e7e9ee, too faint) and `ink-400` (#98a2b3, too heavy) and is used
+   nowhere else. */
 .scroll-thin::-webkit-scrollbar {
   height: 8px;
   width: 8px;

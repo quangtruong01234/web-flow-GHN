@@ -8,7 +8,7 @@ export default function NotFound() {
       <Card className="max-w-md p-7 text-center">
         <h1 className="text-xl font-semibold text-ink-900">Shipment not found</h1>
         <p className="mt-2 text-sm leading-6 text-ink-500">
-          The order ID does not exist in the local mock shipment data.
+          This page does not exist, or the order ID is not in the logistics queue.
         </p>
         <Link href="/shipments">
           <Button className="mt-5">Back to shipments</Button>
