@@ -62,6 +62,54 @@ Details and a manual QA checklist live in `.ai/context/testing.md`.
 - **Never commit `.env*` files** (they are git-ignored; only `.env.example` is tracked).
   GHN token / shop id / webhook secret must stay backend-only and must never appear here.
 
+## CI/CD
+
+CI runs on GitHub Actions (`.github/workflows/ci.yml`) for every push to `main` and every
+PR into `main`:
+
+| Job | What it runs |
+| --- | ------------ |
+| `verify` | `lint` → `typecheck` → `test` (Jest) → `build`, sequential |
+| `e2e` | Playwright against a self-started dev server (specs mock the gateway, so no backend is needed); uploads the HTML report as an artifact |
+| `deploy` | Vercel — **only after `verify` and `e2e` pass**. `main` → production, PR → preview URL commented on the PR |
+
+Deploy target is **Vercel** (Hobby/free): it is the Next.js first-party platform, so
+`rewrites()`, SSR, and route handlers work with no adapter. `vercel.json` pins the function
+region to `sin1` (Singapore) and turns Vercel's own Git auto-deploy off so the gated
+Actions workflow is the single deploy path.
+
+### One-time Vercel setup
+
+Without these secrets CI still runs in full — the `deploy` job just skips.
+
+```bash
+npx vercel login
+npx vercel link          # creates .vercel/project.json (git-ignored)
+```
+
+Then add three GitHub repo secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Where to get it |
+| ------ | --------------- |
+| `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens |
+| `VERCEL_ORG_ID` | `.vercel/project.json` → `orgId` |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` → `projectId` |
+
+### Deployed environment variables
+
+Set these in the Vercel project (Settings → Environment Variables), **not** in git:
+
+| Var | Value | Exposed to browser? |
+| --- | ----- | ------------------- |
+| `NEXT_PUBLIC_API_URL` | `/api` | yes |
+| `API_PROXY_TARGET` | public origin of the TryBuy gateway | no |
+| `NEXT_PUBLIC_GHN_DEMO_MODE` | omit in production; `true` only on a demo deploy | yes |
+
+> **The deployed app needs a publicly reachable gateway.** `API_PROXY_TARGET` defaults to
+> `http://localhost:3000`, which does not exist on Vercel — until the gateway has a public
+> URL, a deployed build renders but every `/api/*` call fails. GHN token / shop id /
+> webhook secret stay backend-only and must never be added here.
+
 ## AI coding context
 
 This repo carries first-class guidance for AI coding agents. **Read it before changing
