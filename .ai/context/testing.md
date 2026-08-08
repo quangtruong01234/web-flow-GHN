@@ -57,6 +57,17 @@ npm.cmd run build
 
 Never mark work done with lint, build, TypeScript, or Jest errors.
 
+## CI
+
+`.github/workflows/ci.yml` re-runs the same checks on every push to `main` and every PR:
+a `verify` job (lint → typecheck → test → build) and an `e2e` job (Playwright, gateway
+mocked via `page.route`, so no backend is required). The Vercel deploy job is gated behind
+both. CI is a backstop, not a substitute — still run `npm.cmd run verify` locally before
+claiming done.
+
+Keep E2E specs runnable without a live gateway. Playwright's `webServer` command resolves
+`npm` vs. `npm.cmd` by platform so the same config works on Windows and Linux runners.
+
 ## Manual QA checklist
 
 Auth, shipment list/detail/history, manual sync, manual actions, waybill edits, and demo
