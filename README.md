@@ -105,6 +105,21 @@ Set these in the Vercel project (Settings → Environment Variables), **not** in
 | `API_PROXY_TARGET` | public origin of the TryBuy gateway | no |
 | `NEXT_PUBLIC_GHN_DEMO_MODE` | omit in production; `true` only on a demo deploy | yes |
 
+> **All of these must be non-sensitive.** CI builds with `vercel pull` + `vercel build`,
+> and a variable marked *Sensitive* downloads as the literal string `[SENSITIVE]` — the
+> real value only exists when Vercel builds on its own infrastructure. A sensitive
+> `NEXT_PUBLIC_API_URL` gets inlined into the client bundle as `[SENSITIVE]`; a sensitive
+> `API_PROXY_TARGET` produces a broken rewrite destination. Recent Vercel CLI versions
+> default to sensitive, so add them explicitly:
+>
+> ```bash
+> vercel env add API_PROXY_TARGET production --no-sensitive --value "https://gateway.example.com"
+> ```
+>
+> Verify with `vercel pull --environment=preview` and read `.vercel/.env.preview.local`;
+> the real value must be there. None of these are secrets — `NEXT_PUBLIC_*` ship to the
+> browser anyway, and `API_PROXY_TARGET` is just a public hostname.
+
 > **The deployed app needs a publicly reachable gateway.** `API_PROXY_TARGET` defaults to
 > `http://localhost:3000`, which does not exist on Vercel — until the gateway has a public
 > URL, a deployed build renders but every `/api/*` call fails. GHN token / shop id /
