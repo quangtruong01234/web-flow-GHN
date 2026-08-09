@@ -91,9 +91,15 @@ Then add three GitHub repo secrets (Settings → Secrets and variables → Actio
 
 | Secret | Where to get it |
 | ------ | --------------- |
-| `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens |
+| `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens — scope **All Projects** |
 | `VERCEL_ORG_ID` | `.vercel/project.json` → `orgId` |
 | `VERCEL_PROJECT_ID` | `.vercel/project.json` → `projectId` |
+
+> The token scope matters. A token scoped to a single project cannot read the project
+> settings `vercel pull` needs, and the deploy job fails with the misleading
+> `Could not retrieve Project Settings. To link your Project, remove the '.vercel'
+> directory and deploy again` — which points at a local directory that has nothing to do
+> with it.
 
 ### Deployed environment variables
 
