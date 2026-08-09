@@ -125,6 +125,21 @@ jobs:
             echo "prod_flag=" >> "$GITHUB_OUTPUT"
           fi
 
+      # `vercel pull` failing with "Could not retrieve Project Settings" is
+      # ambiguous: it covers a bad token scope, a wrong org/project id, and a
+      # revoked token alike. Print enough to tell them apart without leaking
+      # the values themselves.
+      - name: Diagnose Vercel access
+        if: steps.guard.outputs.configured == 'true'
+        continue-on-error: true
+        run: |
+          echo "ORG_ID prefix:     ${VERCEL_ORG_ID%%_*}_ (len ${#VERCEL_ORG_ID})"
+          echo "PROJECT_ID prefix: ${VERCEL_PROJECT_ID%%_*}_ (len ${#VERCEL_PROJECT_ID})"
+          echo "--- whoami (fails if the token cannot read the account) ---"
+          vercel whoami --token="$VERCEL_TOKEN" || echo "whoami FAILED"
+          echo "--- projects (fails if the token is scoped to one project) ---"
+          vercel project ls --token="$VERCEL_TOKEN" || echo "project ls FAILED"
+
       # Pulls the project's env vars (API_PROXY_TARGET, NEXT_PUBLIC_*) so the
       # build below matches what Vercel would produce itself.
       - name: Pull Vercel environment
