@@ -28,6 +28,8 @@ const LOCAL_STATUS_OPTIONS: Array<{ value: BackendOrderStatus; label: string }> 
   { value: "delivering", label: "Delivering" },
   { value: "completed", label: "Completed" },
   { value: "canceled", label: "Canceled" },
+  { value: "return_requested", label: "Return requested" },
+  { value: "refunded", label: "Refunded" },
 ];
 
 // Canonical GHN status strings (server filters on the recorded raw value).

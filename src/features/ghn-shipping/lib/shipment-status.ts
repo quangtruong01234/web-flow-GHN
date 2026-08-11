@@ -89,6 +89,12 @@ export const LOCAL_STATUS_META: Record<LocalStatus, StatusMeta> = {
     barClass: "bg-orange-600",
     label: "Refunding",
   },
+  refunded: {
+    badgeClass: "bg-violet-100 text-violet-800",
+    dotClass: "bg-violet-600",
+    barClass: "bg-violet-600",
+    label: "Refunded",
+  },
   cancelled: {
     badgeClass: "bg-slate-100 text-slate-500",
     dotClass: "bg-slate-400",
@@ -114,6 +120,7 @@ export const LOCAL_STATUS_ORDER: LocalStatus[] = [
   "shipping",
   "completed",
   "refunding",
+  "refunded",
   "cancelled",
 ];
 

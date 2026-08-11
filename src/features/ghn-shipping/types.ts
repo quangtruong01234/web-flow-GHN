@@ -25,4 +25,5 @@ export type LocalStatus =
   | "shipping"
   | "completed"
   | "refunding"
+  | "refunded"
   | "cancelled";

@@ -31,6 +31,13 @@ describe("mapOrderStatusToLocal", () => {
     expect(mapOrderStatusToLocal("confirmed")).toBe("confirmed");
   });
 
+  // Regression: both used to fall through to `default` and render "Pending",
+  // so a refunded order looked like a brand-new one on every console screen.
+  it("maps the return/refund statuses instead of falling back to 'pending'", () => {
+    expect(mapOrderStatusToLocal("return_requested")).toBe("refunding");
+    expect(mapOrderStatusToLocal("refunded")).toBe("refunded");
+  });
+
   it("falls back to 'pending' for null/undefined", () => {
     expect(mapOrderStatusToLocal(null)).toBe("pending");
     expect(mapOrderStatusToLocal(undefined)).toBe("pending");

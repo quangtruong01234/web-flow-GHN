@@ -47,6 +47,10 @@ export function mapOrderStatusToLocal(
       return "completed";
     case "canceled":
       return "cancelled";
+    case "return_requested":
+      return "refunding";
+    case "refunded":
+      return "refunded";
     default:
       return "pending";
   }

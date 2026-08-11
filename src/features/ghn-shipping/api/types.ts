@@ -29,7 +29,9 @@ export type BackendOrderStatus =
   | "shipped"
   | "delivering"
   | "completed"
-  | "canceled";
+  | "canceled"
+  | "return_requested"
+  | "refunded";
 
 /** Backend payment method enum. */
 export type BackendPaymentMethod = "zalopay" | "vnpay" | "cod";
