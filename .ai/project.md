@@ -31,6 +31,8 @@ Treat every rule in those files as active project guidance.
   `POST /api/user/logout`.
 - Shipment list/detail/history and manual sync are wired to the gateway GHN endpoints
   through TanStack Query and the local API client.
+- Auth and GHN shipment contracts use backend-issued opaque public ids (`usr_...`,
+  `ord_...`, and nullable `prod_...`) without numeric parsing.
 - Backend `logistics_operator` / `shipping_manager` roles, grants, and test accounts exist
   for this console.
 - Manual GHN cancel, return, update COD, update receiver info, and demo-status are wired

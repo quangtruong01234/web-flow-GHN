@@ -121,3 +121,21 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
 - **Suggested fix:** Keep frontend and backend demo flags paired in local/demo
   environments; leave both off in production.
 - **Owner/area:** Frontend env + backend env.
+
+## 13. GHN console exposed numeric database ids - RESOLVED (2026-07-17)
+
+- **Risk:** GHN console auth and shipment contracts historically assumed numeric user,
+  order, and product database keys.
+- **Impact:** Resolved. URLs, query keys, gateway calls, mutations, response adapters, and
+  test fixtures now preserve opaque `usr_...`, `ord_...`, and `prod_...` ids.
+- **Current status:** Malformed shipment route ids are rejected locally; legacy deleted
+  products remain supported through `productId: string | null` without erasing valid
+  checkout-time product snapshots. Runtime-verified against the live gateway on
+  2026-07-17 (list/detail/history as `logistics_test`): wire ids match the declared
+  contracts. A backend gap surfaced (`GET /admin/ghn/orders/:id/history` leaked the
+  numeric order PK in `orderId`), was recorded in `backend-handoff.md`, fixed by the
+  backend the same day, and re-verified live: history rows now return the `ord_...`
+  public id.
+- **Suggested fix:** Keep public ids opaque and never parse, numerically sort, or compare
+  them with internal database keys.
+- **Owner/area:** Frontend auth + shipment contracts - done.

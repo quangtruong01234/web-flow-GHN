@@ -61,24 +61,26 @@ UI is hidden unless `NEXT_PUBLIC_GHN_DEMO_MODE=true`; the backend route still re
 
 ```json
 {
-  "id": 1,
+  "id": "usr_AbCdEf1234567890",
   "username": "logistics_test",
   "email": "logistics@example.com",
   "name": "Logistics Test",
   "avatar": null,
   "isActive": true,
   "role": {
-    "rol_id": 1,
-    "rol_name": "logistics_operator",
-    "rol_slug": "logistics_operator",
-    "rol_status": "active",
-    "rol_description": "",
-    "rol_grants": []
+    "id": 4,
+    "name": "logistics_operator",
+    "slug": "logistics-operator-001"
   },
   "createdAt": "2026-06-27T00:00:00.000Z",
   "updatedAt": "2026-06-27T00:00:00.000Z"
 }
 ```
+
+`role` is reshaped by the gateway to exactly `{ id, name, slug }`; the raw `rol_*` columns
+(and the `rol_grants` matrix that leaked with them) are gone. Role *names* are unchanged, so
+`ALLOWED_ROLES` / `isAllowedRole` keep working — but read `role.name`, never `role.rol_name`,
+which silently falls back to `"user"` and sends every operator to `/403`.
 
 `/me` is authoritative for reload hydration. Do not cache a fallback role in browser
 storage.
@@ -101,8 +103,15 @@ Server state must use TanStack Query, not `useState` + `useEffect` and not Conte
 - Invalidate related detail/history/list keys after sync, action, waybill edit, or
   demo-status mutation.
 
-Gateway shipment detail/history/sync calls use the numeric local order id; keep those query
-keys typed as `number`.
+Gateway shipment detail/history/sync/action calls use the opaque `ord_` public id returned
+by the list endpoint. Keep route params, query keys, API methods, and mutation variables
+typed as `string`; never parse or numerically sort the id. The gateway accepts only
+`^ord_[A-Za-z0-9]{16}$` on GHN order routes.
+
+Auth users and GHN order buyer/seller references use opaque `usr_` public ids. Detail
+items expose `productId: "prod_<16 alnum>" | null`; keep the nullable form for legacy
+orders and use the value directly without numeric parsing. The nested order item no longer
+exposes its numeric `orderId` foreign key.
 
 ## Error handling
 

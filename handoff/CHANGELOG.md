@@ -10,6 +10,30 @@ context if relevant).
 
 ---
 
+### 2026-08-11 — Gateway role reshape integrated (prod `/403` fix)
+
+- `BackendRole` is now `{ id, name, slug }` and `AuthContext` reads `role.name`. The
+  gateway stopped returning the raw `rol_*` row on 2026-08-06, so the old
+  `role.rol_name` read resolved every account to `"user"` — on prod, `logistic1` and
+  `shipping1` signed in successfully and were then bounced to `/403` by
+  `GhnLoginCard` / `AuthGate`. Verified against prod: login returns
+  `role: { id: 4, name: "logistics_operator", … }`.
+- `.ai/context/data-fetching.md` carried the stale `rol_*` sample payload; corrected so
+  the documented contract matches the wire.
+- Integrates the "BREAKING — login/`me` `role` is now `{id,name,slug}`" handoff entry.
+
+### 2026-07-17 — PUBID opaque identifiers integrated
+
+- GHN order ids now remain opaque `ord_...` strings through list/detail routes, query
+  keys, gateway reads, sync/actions, COD/receiver edits, and demo-status mutations.
+  Malformed route ids are rejected before gateway work.
+- Auth and embedded/top-level order user references now use nullable opaque `usr_...`
+  strings. Detail product references use `prod_... | null`, retain legacy null support,
+  and no longer model the removed numeric item `orderId` foreign key.
+- Jest fixtures and mocked Playwright flows now exercise the public-id contracts. Closes
+  the PUBID-01, PUBID-02, PUBID-05, PUBID-07, deleted-product regression, and superseded
+  SEC-L1 numeric-id handoffs.
+
 ### 2026-07-10 — Typed test fixture factories + e2e infra fixes
 
 - New `src/features/ghn-shipping/testing/fixtures.ts`: typed fixture builders with
