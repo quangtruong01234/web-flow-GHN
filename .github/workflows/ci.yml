@@ -161,15 +161,23 @@ jobs:
 
       # Vercel refuses deployments whose git author is not on the account, and
       # reports it as a BLOCKED state rather than a non-zero exit — the failure
-      # that once left this job at "Building…" for 45 minutes.
+      # that once left this job at "Building…" for 45 minutes. Read the state
+      # from the API, not from `vercel inspect`, whose human-readable output
+      # ("status ● Ready") is not a stable contract.
       - name: Verify deployment state
         if: steps.guard.outputs.configured == 'true'
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: |
-          state=$(vercel inspect "${{ steps.deploy.outputs.url }}" --token="$VERCEL_TOKEN" 2>&1 \
-            | grep -oE '(READY|ERROR|CANCELED|BLOCKED|QUEUED|BUILDING|INITIALIZING)' | head -1)
-          echo "State: ${state:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          host=${DEPLOY_URL#https://}
+          query=""
+          case "$VERCEL_ORG_ID" in team_*) query="?teamId=$VERCEL_ORG_ID" ;; esac
+          state=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v13/deployments/${host}${query}" \
+            | jq -r '.readyState // .status // "unknown"')
+          echo "State: $state" >> "$GITHUB_STEP_SUMMARY"
           if [ "$state" != "READY" ]; then
-            echo "Deployment is not READY (got '${state:-unknown}')." >> "$GITHUB_STEP_SUMMARY"
+            echo "Deployment is not READY (got '$state')." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
