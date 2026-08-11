@@ -36,7 +36,7 @@ export type BackendPaymentMethod = "zalopay" | "vnpay" | "cod";
 
 /** Buyer/seller summary the gateway joins onto list and detail responses. */
 export interface BackendUserSummary {
-  id: number;
+  id: string;
   username: string;
   email: string;
   name: string | null;
@@ -45,9 +45,9 @@ export interface BackendUserSummary {
 
 /** One row of `GET /admin/ghn/orders`. */
 export interface BackendGhnListItem {
-  orderId: number;
-  userId: number;
-  sellerId: number;
+  orderId: string;
+  userId: string | null;
+  sellerId: string | null;
   orderStatus: BackendOrderStatus | null;
   ghnOrderCode: string | null;
   shippingFee: number | null;
@@ -74,9 +74,9 @@ export interface BackendPaginated<T> {
 /** Single order item embedded in the detail response. */
 export interface BackendOrderItem {
   id: number;
-  orderId: number;
-  productId: number;
-  sellerId: number;
+  productId: string | null;
+  /** Opaque `usr_...` id; null when the seller reference cannot be resolved. */
+  sellerId: string | null;
   productName: string;
   productImage: string | null;
   quantity: number;
@@ -107,9 +107,9 @@ export interface BackendGhnDetail {
 /** Body of `GET /admin/ghn/orders/:id`. */
 export interface BackendGhnDetailResponse {
   localOrder: {
-    orderId: number;
-    userId: number;
-    sellerId: number;
+    orderId: string;
+    userId: string | null;
+    sellerId: string | null;
     orderStatus: BackendOrderStatus | null;
     ghnOrderCode: string | null;
     shippingAddress: string;
@@ -132,8 +132,9 @@ export interface BackendGhnDetailResponse {
 
 /** One row of `GET /admin/ghn/orders/:id/history`. */
 export interface BackendShippingHistory {
-  id: number;
-  orderId: number;
+  /** Bigint PK — serialized as a string on the wire. */
+  id: string;
+  orderId: string;
   type: "webhook" | "manual_sync" | "action";
   actorId: number | null;
   action: string;
@@ -148,7 +149,7 @@ export interface BackendShippingHistory {
 
 /** Body of `POST /admin/ghn/orders/:id/sync`. */
 export interface BackendSyncResult {
-  orderId: number;
+  orderId: string;
   previousStatus: BackendOrderStatus | null;
   newStatus: BackendOrderStatus | null;
   ghnStatus: string;
@@ -159,7 +160,7 @@ export type ShipmentManualAction = "cancel" | "return";
 
 /** Body of `POST /admin/ghn/orders/:id/{cancel|return}`. */
 export interface BackendActionResult {
-  orderId: number;
+  orderId: string;
   action: ShipmentManualAction;
   ghnOrderCode: string;
   previousStatus: BackendOrderStatus | null;
@@ -202,7 +203,7 @@ export interface UpdateReceiverInput {
 
 /** Body of `POST /admin/ghn/orders/:id/update-cod` (success → `201`). */
 export interface BackendUpdateCodResult {
-  orderId: number;
+  orderId: string;
   action: "update_cod";
   ghnOrderCode: string;
   previousCodAmount: number;
@@ -214,7 +215,7 @@ export interface BackendUpdateCodResult {
 
 /** Body of `POST /admin/ghn/orders/:id/update-receiver` (success → `201`). */
 export interface BackendUpdateReceiverResult {
-  orderId: number;
+  orderId: string;
   action: "update_receiver";
   ghnOrderCode: string;
   /** Pipe-delimited `name|phone|addr|ward|district|province` after the edit. */
@@ -249,7 +250,7 @@ export interface ShipmentListParams {
 
 /** A list row after adaptation, ready for the table. */
 export interface ShipmentListItem {
-  orderId: number;
+  orderId: string;
   ghnOrderCode: string | null;
   buyerName: string;
   sellerName: string;
@@ -289,6 +290,7 @@ export interface ShipmentReceiverView {
 
 export interface ShipmentDetailItemView {
   id: number;
+  productId: string | null;
   name: string;
   image: string | null;
   quantity: number;
@@ -297,7 +299,7 @@ export interface ShipmentDetailItemView {
 }
 
 export interface ShipmentDetailView {
-  orderId: number;
+  orderId: string;
   ghnOrderCode: string | null;
   localStatus: LocalStatus;
   ghnStatus: GhnStatus | null;
@@ -331,7 +333,7 @@ export interface ShipmentDetailView {
 
 /** A history timeline row after adaptation. */
 export interface ShipmentHistoryRow {
-  id: number;
+  id: string;
   type: BackendShippingHistory["type"];
   action: string;
   previousStatus: string | null;
@@ -344,7 +346,7 @@ export interface ShipmentHistoryRow {
 }
 
 export interface ShipmentSyncView {
-  orderId: number;
+  orderId: string;
   previousStatus: LocalStatus;
   newStatus: LocalStatus;
   ghnStatus: string;
@@ -352,7 +354,7 @@ export interface ShipmentSyncView {
 }
 
 export interface ShipmentActionView {
-  orderId: number;
+  orderId: string;
   action: ShipmentManualAction;
   ghnOrderCode: string;
   previousStatus: LocalStatus;
@@ -363,7 +365,7 @@ export interface ShipmentActionView {
 }
 
 export interface ShipmentCodUpdateView {
-  orderId: number;
+  orderId: string;
   ghnOrderCode: string;
   previousCodAmount: number;
   newCodAmount: number;
@@ -373,7 +375,7 @@ export interface ShipmentCodUpdateView {
 }
 
 export interface ShipmentReceiverUpdateView {
-  orderId: number;
+  orderId: string;
   ghnOrderCode: string;
   shippingAddress: string;
   updatedFields: string[];

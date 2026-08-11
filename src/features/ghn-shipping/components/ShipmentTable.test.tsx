@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { shipmentListView } from "../testing/fixtures";
+import { ORDER_PUBLIC_ID, shipmentListView } from "../testing/fixtures";
 import { useShipmentList } from "../hooks/useShipments";
 import { ShipmentTable } from "./ShipmentTable";
 
@@ -29,9 +29,9 @@ describe("ShipmentTable", () => {
     expect(useShipmentListMock).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, limit: 20 }),
     );
-    expect(screen.getByRole("link", { name: "#101" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: `#${ORDER_PUBLIC_ID}` })).toHaveAttribute(
       "href",
-      "/shipments/101",
+      `/shipments/${ORDER_PUBLIC_ID}`,
     );
     expect(screen.getByText("Buyer One")).toBeInTheDocument();
     expect(screen.getByText("Seller One")).toBeInTheDocument();

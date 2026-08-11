@@ -27,6 +27,11 @@ import type {
   ShipmentSyncView,
 } from "../api/types";
 
+export const ORDER_PUBLIC_ID = "ord_AbCdEf1234567890";
+export const BUYER_PUBLIC_ID = "usr_0000000000000007";
+export const SELLER_PUBLIC_ID = "usr_0000000000000009";
+export const PRODUCT_PUBLIC_ID = "prod_0000000000000011";
+
 // ---------------------------------------------------------------------------
 // Auth users
 // ---------------------------------------------------------------------------
@@ -36,7 +41,7 @@ const AUTH_USER_DEFAULTS: Record<
   AuthUser
 > = {
   shipping_manager: {
-    id: 2,
+    id: "usr_0000000000000002",
     username: "shipmgr_test",
     name: "Shipping Manager",
     email: "shipmgr@example.com",
@@ -44,7 +49,7 @@ const AUTH_USER_DEFAULTS: Record<
     title: "Shipping Manager",
   },
   logistics_operator: {
-    id: 3,
+    id: "usr_0000000000000003",
     username: "logistics_test",
     name: "Logistics Operator",
     email: "logistics@example.com",
@@ -79,12 +84,9 @@ export function backendMeUser(
     avatar: null,
     isActive: true,
     role: {
-      rol_id: base.id,
-      rol_name: role,
-      rol_slug: role,
-      rol_status: "active",
-      rol_description: "",
-      rol_grants: [],
+      id: role === "logistics_operator" ? 3 : 2,
+      name: role,
+      slug: role,
     },
     createdAt: "2026-06-27T00:00:00.000Z",
     updatedAt: "2026-06-27T00:00:00.000Z",
@@ -100,7 +102,7 @@ export function backendBuyer(
   overrides: Partial<BackendUserSummary> = {},
 ): BackendUserSummary {
   return {
-    id: 7,
+    id: BUYER_PUBLIC_ID,
     username: "buyer1",
     email: "buyer@example.com",
     name: "Buyer One",
@@ -112,7 +114,7 @@ export function backendSeller(
   overrides: Partial<BackendUserSummary> = {},
 ): BackendUserSummary {
   return {
-    id: 9,
+    id: SELLER_PUBLIC_ID,
     username: "seller1",
     email: "seller@example.com",
     name: "Seller One",
@@ -125,9 +127,8 @@ export function backendOrderItem(
 ): BackendOrderItem {
   return {
     id: 1,
-    orderId: 101,
-    productId: 11,
-    sellerId: 9,
+    productId: PRODUCT_PUBLIC_ID,
+    sellerId: SELLER_PUBLIC_ID,
     productName: "Coffee Beans",
     productImage: null,
     quantity: 2,
@@ -164,9 +165,9 @@ export function backendLocalOrder(
   overrides: Partial<BackendGhnDetailResponse["localOrder"]> = {},
 ): BackendGhnDetailResponse["localOrder"] {
   return {
-    orderId: 101,
-    userId: 7,
-    sellerId: 9,
+    orderId: ORDER_PUBLIC_ID,
+    userId: BUYER_PUBLIC_ID,
+    sellerId: SELLER_PUBLIC_ID,
     orderStatus: "delivering",
     ghnOrderCode: "GHN101",
     shippingAddress:
@@ -202,9 +203,9 @@ export function backendListItem(
   overrides: Partial<BackendGhnListItem> = {},
 ): BackendGhnListItem {
   return {
-    orderId: 101,
-    userId: 7,
-    sellerId: 9,
+    orderId: ORDER_PUBLIC_ID,
+    userId: BUYER_PUBLIC_ID,
+    sellerId: SELLER_PUBLIC_ID,
     orderStatus: "delivering",
     ghnOrderCode: "GHN101",
     shippingFee: 30000,
@@ -238,8 +239,8 @@ export function backendHistoryRow(
   overrides: Partial<BackendShippingHistory> = {},
 ): BackendShippingHistory {
   return {
-    id: 1,
-    orderId: 101,
+    id: "1",
+    orderId: ORDER_PUBLIC_ID,
     type: "manual_sync",
     actorId: 2,
     action: "sync",
@@ -258,7 +259,7 @@ export function backendSyncResult(
   overrides: Partial<BackendSyncResult> = {},
 ): BackendSyncResult {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     previousStatus: "delivering",
     newStatus: "delivering",
     ghnStatus: "delivering",
@@ -271,7 +272,7 @@ export function backendActionResult(
   overrides: Partial<BackendActionResult> = {},
 ): BackendActionResult {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     action: "cancel",
     ghnOrderCode: "GHN101",
     previousStatus: "delivering",
@@ -287,7 +288,7 @@ export function backendCodUpdateResult(
   overrides: Partial<BackendUpdateCodResult> = {},
 ): BackendUpdateCodResult {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     action: "update_cod",
     ghnOrderCode: "GHN101",
     previousCodAmount: 250000,
@@ -303,7 +304,7 @@ export function backendReceiverUpdateResult(
   overrides: Partial<BackendUpdateReceiverResult> = {},
 ): BackendUpdateReceiverResult {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     action: "update_receiver",
     ghnOrderCode: "GHN101",
     shippingAddress:
@@ -324,7 +325,7 @@ export function shipmentListItem(
   overrides: Partial<ShipmentListItem> = {},
 ): ShipmentListItem {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     ghnOrderCode: "GHN101",
     buyerName: "Buyer One",
     sellerName: "Seller One",
@@ -360,7 +361,7 @@ export function shipmentDetailView(
   overrides: Partial<ShipmentDetailView> = {},
 ): ShipmentDetailView {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     ghnOrderCode: "GHN101",
     localStatus: "shipping",
     ghnStatus: "delivering",
@@ -383,6 +384,7 @@ export function shipmentDetailView(
     items: [
       {
         id: 1,
+        productId: PRODUCT_PUBLIC_ID,
         name: "Coffee Beans",
         image: null,
         quantity: 2,
@@ -412,7 +414,7 @@ export function shipmentHistoryRow(
   overrides: Partial<ShipmentHistoryRow> = {},
 ): ShipmentHistoryRow {
   return {
-    id: 1,
+    id: "1",
     type: "manual_sync",
     action: "sync",
     previousStatus: "processing",
@@ -430,7 +432,7 @@ export function shipmentSyncView(
   overrides: Partial<ShipmentSyncView> = {},
 ): ShipmentSyncView {
   return {
-    orderId: 101,
+    orderId: ORDER_PUBLIC_ID,
     previousStatus: "shipping",
     newStatus: "shipping",
     ghnStatus: "delivering",

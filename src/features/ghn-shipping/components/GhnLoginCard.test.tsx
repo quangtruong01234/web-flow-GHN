@@ -19,7 +19,7 @@ jest.mock("@/context/AuthContext", () => ({
 
 function authUser(role: AuthUser["role"]): AuthUser {
   return {
-    id: 1,
+    id: "usr_0000000000000001",
     username: "shipmgr_test",
     name: "Shipping Manager",
     email: "shipmgr@example.com",

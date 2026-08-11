@@ -33,7 +33,7 @@ export function GhnSyncPage() {
 
   const userMaySync = roleCanSync(user?.role);
 
-  const onSync = (orderId: number) => {
+  const onSync = (orderId: string) => {
     sync.mutate(orderId, {
       onSuccess: (result) => {
         push({

@@ -11,6 +11,7 @@ import type {
 } from "../api/types";
 import {
   authUser,
+  ORDER_PUBLIC_ID,
   shipmentDetailView,
   shipmentHistoryRow,
   shipmentSyncView,
@@ -42,7 +43,7 @@ jest.mock("../hooks/useShipments", () => ({
 }));
 
 interface ShipmentActionInput {
-  orderId: number;
+  orderId: string;
   action: ShipmentManualAction;
 }
 
@@ -57,7 +58,7 @@ interface ShipmentSyncOptions {
 }
 
 interface SetDemoStatusMutationInput {
-  orderId: number;
+  orderId: string;
   body: SetDemoStatusInput;
 }
 
@@ -87,7 +88,7 @@ describe("ShipmentDetail", () => {
     typeof useSetDemoStatus
   >;
   const pushMock = jest.fn();
-  const syncMutateMock = jest.fn<void, [number, ShipmentSyncOptions?]>();
+  const syncMutateMock = jest.fn<void, [string, ShipmentSyncOptions?]>();
   const actionMutateMock = jest.fn<
     void,
     [ShipmentActionInput, ShipmentActionOptions?]
@@ -139,9 +140,9 @@ describe("ShipmentDetail", () => {
   });
 
   it("renders detail, timeline, last sync, and backend-available actions", () => {
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
-    expect(screen.getByRole("heading", { name: "#101" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: `#${ORDER_PUBLIC_ID}` })).toBeInTheDocument();
     expect(screen.getByText("Receiver One")).toBeInTheDocument();
     expect(screen.getByText("Sync GHN status")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Cancel shipment/i })).toBeEnabled();
@@ -155,7 +156,7 @@ describe("ShipmentDetail", () => {
     actionMutateMock.mockImplementation((_input, options) => {
       options?.onError?.(new ApiError("Carrier rejected the request", 500));
     });
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
 
@@ -173,7 +174,7 @@ describe("ShipmentDetail", () => {
     actionMutateMock.mockImplementation((_input, options) => {
       options?.onError?.(new ApiError("Order cannot be cancelled", 400));
     });
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
 
@@ -192,12 +193,12 @@ describe("ShipmentDetail", () => {
     syncMutateMock.mockImplementation((_orderId, options) => {
       options?.onSuccess?.(shipmentSyncView());
     });
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Sync GHN status/i }));
 
     await waitFor(() => {
-      expect(syncMutateMock).toHaveBeenCalledWith(101, expect.any(Object));
+      expect(syncMutateMock).toHaveBeenCalledWith(ORDER_PUBLIC_ID, expect.any(Object));
       expect(pushMock).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: "success",
@@ -213,7 +214,7 @@ describe("ShipmentDetail", () => {
         new ApiError("GHN order GHN101 not found: OrderCode not found", 404),
       );
     });
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Sync GHN status/i }));
 
@@ -229,7 +230,7 @@ describe("ShipmentDetail", () => {
   });
 
   it("hides demo controls unless demo mode is enabled", () => {
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     expect(screen.queryByText("Demo controls")).not.toBeInTheDocument();
   });
@@ -240,7 +241,7 @@ describe("ShipmentDetail", () => {
       options?.onSuccess?.(shipmentSyncView({ ghnStatus: "waiting_to_return" }));
     });
 
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     expect(screen.getByText("Demo controls")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Apply demo status/i }));
@@ -248,7 +249,7 @@ describe("ShipmentDetail", () => {
     await waitFor(() => {
       expect(demoMutateMock).toHaveBeenCalledWith(
         {
-          orderId: 101,
+          orderId: ORDER_PUBLIC_ID,
           body: { ghnStatus: "waiting_to_return" },
         },
         expect.any(Object),
@@ -270,7 +271,7 @@ describe("ShipmentDetail", () => {
       );
     });
 
-    render(<ShipmentDetail orderId={101} />);
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Apply demo status/i }));
 

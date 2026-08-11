@@ -1,5 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { shipmentListItem, shipmentListView } from "../testing/fixtures";
+import {
+  ORDER_PUBLIC_ID,
+  shipmentListItem,
+  shipmentListView,
+} from "../testing/fixtures";
 import { useShipmentList } from "../hooks/useShipments";
 import { ActionHistoryPage } from "./ActionHistoryPage";
 
@@ -34,12 +38,12 @@ describe("ActionHistoryPage", () => {
   it("renders recent shipment activity with timeline links", () => {
     render(<ActionHistoryPage />);
 
-    expect(screen.getByText("#101")).toBeInTheDocument();
+    expect(screen.getByText(`#${ORDER_PUBLIC_ID}`)).toBeInTheDocument();
     expect(screen.getByText("GHN101")).toBeInTheDocument();
     expect(screen.getByText("Returned")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Timeline" })).toHaveAttribute(
       "href",
-      "/shipments/101",
+      `/shipments/${ORDER_PUBLIC_ID}`,
     );
   });
 });

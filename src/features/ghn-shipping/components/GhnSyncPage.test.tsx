@@ -4,7 +4,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { ApiError } from "@/lib/api";
 import type { ShipmentSyncView } from "../api/types";
-import { authUser, shipmentListView, shipmentSyncView } from "../testing/fixtures";
+import {
+  authUser,
+  ORDER_PUBLIC_ID,
+  shipmentListView,
+  shipmentSyncView,
+} from "../testing/fixtures";
 import { useShipmentList, useSyncShipment } from "../hooks/useShipments";
 import { GhnSyncPage } from "./GhnSyncPage";
 
@@ -35,7 +40,7 @@ describe("GhnSyncPage", () => {
   const useShipmentListMock = useShipmentList as jest.MockedFunction<typeof useShipmentList>;
   const useSyncShipmentMock = useSyncShipment as jest.MockedFunction<typeof useSyncShipment>;
   const pushMock = jest.fn();
-  const mutateMock = jest.fn<void, [number, ShipmentSyncOptions?]>();
+  const mutateMock = jest.fn<void, [string, ShipmentSyncOptions?]>();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -67,7 +72,7 @@ describe("GhnSyncPage", () => {
 
     render(<GhnSyncPage />);
 
-    expect(screen.getByText("#101")).toBeInTheDocument();
+    expect(screen.getByText(`#${ORDER_PUBLIC_ID}`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sync" })).toBeDisabled();
     expect(screen.getByText(/syncing requires the shipping manager role/i)).toBeInTheDocument();
   });
@@ -88,11 +93,11 @@ describe("GhnSyncPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sync" }));
 
     await waitFor(() => {
-      expect(mutateMock).toHaveBeenCalledWith(101, expect.any(Object));
+      expect(mutateMock).toHaveBeenCalledWith(ORDER_PUBLIC_ID, expect.any(Object));
       expect(pushMock).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: "success",
-          title: "Order #101 synced",
+          title: `Order #${ORDER_PUBLIC_ID} synced`,
         }),
       );
     });
@@ -119,7 +124,7 @@ describe("GhnSyncPage", () => {
       expect(pushMock).toHaveBeenCalledWith(
         expect.objectContaining({
           kind: "error",
-          title: "GHN temporarily unavailable for #101",
+          title: `GHN temporarily unavailable for #${ORDER_PUBLIC_ID}`,
           message: expect.stringContaining("Try syncing again"),
         }),
       );

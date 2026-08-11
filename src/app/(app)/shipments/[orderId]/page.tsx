@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { GhnAdminShell } from "@/features/ghn-shipping/components/GhnAdminShell";
 import { ShipmentDetail } from "@/features/ghn-shipping/components/ShipmentDetail";
+import { isOrderPublicId } from "@/features/ghn-shipping/lib/public-ids";
 
 export default async function ShipmentDetailPage({
   params,
@@ -8,12 +9,11 @@ export default async function ShipmentDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
-  const id = Number(orderId);
-  if (!Number.isInteger(id) || id <= 0) notFound();
+  if (!isOrderPublicId(orderId)) notFound();
 
   return (
-    <GhnAdminShell title={`Shipment #${id}`}>
-      <ShipmentDetail orderId={id} />
+    <GhnAdminShell title={`Shipment #${orderId}`}>
+      <ShipmentDetail orderId={orderId} />
     </GhnAdminShell>
   );
 }

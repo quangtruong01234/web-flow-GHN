@@ -97,7 +97,7 @@ function BackLink() {
   );
 }
 
-export function ShipmentDetail({ orderId }: { orderId: number }) {
+export function ShipmentDetail({ orderId }: { orderId: string }) {
   const detail = useShipmentDetail(orderId);
   const history = useShipmentHistory(orderId);
 

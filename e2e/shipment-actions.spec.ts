@@ -5,6 +5,7 @@ import {
   backendDetailResponse,
   backendHistoryRow,
   backendMeUser,
+  ORDER_PUBLIC_ID,
   backendPaginatedList,
   backendReceiverUpdateResult,
   backendSyncResult,
@@ -39,17 +40,17 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       return;
     }
 
-    if (method === "GET" && path === "/api/order/admin/ghn/orders/101") {
+    if (method === "GET" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}`) {
       await route.fulfill({ json: { data: detail } });
       return;
     }
 
-    if (method === "GET" && path === "/api/order/admin/ghn/orders/101/history") {
+    if (method === "GET" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/history`) {
       await route.fulfill({ json: { data: history } });
       return;
     }
 
-    if (method === "POST" && path === "/api/order/admin/ghn/orders/101/sync") {
+    if (method === "POST" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/sync`) {
       const status = options.syncStatus ?? 201;
       if (status >= 400) {
         await route.fulfill({
@@ -65,7 +66,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       return;
     }
 
-    if (method === "POST" && path === "/api/order/admin/ghn/orders/101/update-cod") {
+    if (method === "POST" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/update-cod`) {
       expect(request.postDataJSON()).toEqual({ codAmount: 0 });
       await route.fulfill({
         status: 201,
@@ -74,7 +75,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       return;
     }
 
-    if (method === "POST" && path === "/api/order/admin/ghn/orders/101/update-receiver") {
+    if (method === "POST" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/update-receiver`) {
       expect(request.postDataJSON()).toEqual({ toName: "Receiver Two" });
       await route.fulfill({
         status: 201,
@@ -83,7 +84,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
       return;
     }
 
-    if (method === "POST" && path === "/api/order/admin/ghn/orders/101/demo-status") {
+    if (method === "POST" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/demo-status`) {
       const status = options.demoStatus ?? 201;
       if (status >= 400) {
         await route.fulfill({
@@ -115,7 +116,7 @@ async function setupGateway(page: Page, options: GatewayOptions = {}): Promise<v
 test.describe("shipment action flows", () => {
   test("edits COD and receiver through gateway-backed mutations", async ({ page }) => {
     await setupGateway(page);
-    await page.goto("/shipments/101");
+    await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await page.getByRole("button", { name: "Update COD" }).click();
     await page.locator("#cod-amount").fill("0");
@@ -135,7 +136,7 @@ test.describe("shipment action flows", () => {
       syncStatus: 404,
       syncMessage: "GHN order GHN101 not found: OrderCode not found",
     });
-    await page.goto("/shipments/101");
+    await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await page.getByRole("button", { name: "Sync GHN status" }).click();
 
@@ -154,7 +155,7 @@ test.describe("shipment action flows", () => {
 
     await page.getByRole("button", { name: "Sync" }).click();
 
-    await expect(page.getByText("GHN temporarily unavailable for #101")).toBeVisible();
+    await expect(page.getByText(`GHN temporarily unavailable for #${ORDER_PUBLIC_ID}`)).toBeVisible();
     await expect(page.getByText(/Try syncing again/i)).toBeVisible();
   });
 
@@ -163,7 +164,7 @@ test.describe("shipment action flows", () => {
       demoStatus: 403,
       demoMessage: "GHN demo status endpoint is disabled",
     });
-    await page.goto("/shipments/101");
+    await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await expect(page.getByText("Demo controls")).toBeVisible();
     await page.getByRole("button", { name: "Apply demo status" }).click();

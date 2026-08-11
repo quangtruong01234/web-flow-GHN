@@ -4,6 +4,7 @@ import {
   backendDetailResponse,
   backendHistoryRow,
   backendMeUser,
+  ORDER_PUBLIC_ID,
   backendPaginatedList,
 } from "../src/features/ghn-shipping/testing/fixtures";
 
@@ -34,12 +35,12 @@ async function setupGateway(page: Page): Promise<void> {
       return;
     }
 
-    if (method === "GET" && path === "/api/order/admin/ghn/orders/101") {
+    if (method === "GET" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}`) {
       await route.fulfill({ json: { data: detail } });
       return;
     }
 
-    if (method === "GET" && path === "/api/order/admin/ghn/orders/101/history") {
+    if (method === "GET" && path === `/api/order/admin/ghn/orders/${ORDER_PUBLIC_ID}/history`) {
       await route.fulfill({ json: { data: history } });
       return;
     }
@@ -66,10 +67,10 @@ test.describe("logistics_operator role matrix", () => {
     await setupGateway(page);
     await page.goto("/shipments");
 
-    await page.getByRole("link", { name: "#101" }).click();
+    await page.getByRole("link", { name: `#${ORDER_PUBLIC_ID}` }).click();
 
     await expect(
-      page.getByRole("heading", { name: "#101", exact: true }),
+      page.getByRole("heading", { name: `#${ORDER_PUBLIC_ID}`, exact: true }),
     ).toBeVisible();
     await expect(page.getByText("Shipping timeline")).toBeVisible();
     await expect(page.getByText("Synced from GHN")).toBeVisible();
@@ -79,7 +80,7 @@ test.describe("logistics_operator role matrix", () => {
     page,
   }) => {
     await setupGateway(page);
-    await page.goto("/shipments/101");
+    await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await expect(
       page.getByRole("button", { name: "Sync GHN status" }),
@@ -109,7 +110,7 @@ test.describe("logistics_operator role matrix", () => {
 
   test("demo controls render read-only", async ({ page }) => {
     await setupGateway(page);
-    await page.goto("/shipments/101");
+    await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await expect(page.getByText("Demo controls")).toBeVisible();
     await expect(page.locator("#demo-ghn-status")).toBeDisabled();

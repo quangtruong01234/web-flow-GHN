@@ -21,11 +21,11 @@ export const ALLOWED_ROLES: readonly string[] = [
 ];
 
 export interface AuthUser {
-  id: number;
+  id: string;
   username: string;
   name: string;
   email: string;
-  /** Raw backend `rol_name`; may be outside ALLOWED_ROLES (e.g. shop/user). */
+  /** Raw backend role name; may be outside ALLOWED_ROLES (e.g. shop/user). */
   role: string;
   title: string;
 }
@@ -63,7 +63,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // single mapper drives both paths. No identity is stored in the browser — the
 // credential lives in the HttpOnly cookie and `/me` is authoritative on reload.
 function toAuthUser(backend: BackendLoginUser | BackendMeUser): AuthUser {
-  const role = backend.role?.rol_name ?? "user";
+  const role = backend.role?.name ?? "user";
   return {
     id: backend.id,
     username: backend.username,

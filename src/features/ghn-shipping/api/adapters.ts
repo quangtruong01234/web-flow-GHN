@@ -86,11 +86,11 @@ export function mapGhnStatus(
 
 function userName(
   user: BackendUserSummary | null,
-  fallbackId: number,
+  fallbackId: string | null,
   kind: "Buyer" | "Seller",
 ): string {
   if (user) return user.name?.trim() || user.username || `${kind} #${user.id}`;
-  return `${kind} #${fallbackId}`;
+  return fallbackId ? `${kind} #${fallbackId}` : kind;
 }
 
 export function toShipmentListItem(
@@ -151,6 +151,7 @@ function parseReceiver(
 function toDetailItem(item: BackendOrderItem): ShipmentDetailItemView {
   return {
     id: item.id,
+    productId: item.productId,
     name: item.productName,
     image: item.productImage,
     quantity: item.quantity,

@@ -13,18 +13,18 @@ export type BackendRoleName =
   | "logistics_operator"
   | "shipping_manager";
 
+// The gateway reshapes the role at the boundary instead of returning the raw DB
+// row, so the `rol_*` columns — and the `rol_grants` permission matrix that used
+// to leak with them — are gone. Role names themselves are unchanged.
 export interface BackendRole {
-  rol_id: number;
-  rol_name: BackendRoleName;
-  rol_slug: string;
-  rol_status: string;
-  rol_description: string;
-  rol_grants: unknown[];
+  id: number;
+  name: BackendRoleName;
+  slug: string;
 }
 
 /** `data` payload of `POST /api/user/login` (password stripped, role eager-loaded). */
 export interface BackendLoginUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   name: string | null;
@@ -37,7 +37,7 @@ export interface BackendLoginUser {
 
 /** `data` payload of `GET /api/user/me` (now returns the same `role` as login). */
 export interface BackendMeUser {
-  id: number;
+  id: string;
   username: string;
   email: string;
   name: string | null;

@@ -59,7 +59,7 @@ export const shipmentsApi = {
   },
 
   async detail(
-    orderId: number,
+    orderId: string,
     signal?: AbortSignal,
   ): Promise<ShipmentDetailView> {
     const res = await request<BackendGhnDetailResponse>(`${BASE}/${orderId}`, {
@@ -69,7 +69,7 @@ export const shipmentsApi = {
   },
 
   async history(
-    orderId: number,
+    orderId: string,
     signal?: AbortSignal,
   ): Promise<ShipmentHistoryRow[]> {
     const res = await request<BackendShippingHistory[]>(
@@ -79,7 +79,7 @@ export const shipmentsApi = {
     return res.map(toHistoryRow);
   },
 
-  async sync(orderId: number): Promise<ShipmentSyncView> {
+  async sync(orderId: string): Promise<ShipmentSyncView> {
     const res = await request<BackendSyncResult>(`${BASE}/${orderId}/sync`, {
       method: "POST",
     });
@@ -87,7 +87,7 @@ export const shipmentsApi = {
   },
 
   async action(
-    orderId: number,
+    orderId: string,
     action: ShipmentManualAction,
   ): Promise<ShipmentActionView> {
     const res = await request<BackendActionResult>(`${BASE}/${orderId}/${action}`, {
@@ -97,7 +97,7 @@ export const shipmentsApi = {
   },
 
   async updateCod(
-    orderId: number,
+    orderId: string,
     body: UpdateCodInput,
   ): Promise<ShipmentCodUpdateView> {
     const res = await request<BackendUpdateCodResult>(
@@ -108,7 +108,7 @@ export const shipmentsApi = {
   },
 
   async updateReceiver(
-    orderId: number,
+    orderId: string,
     body: UpdateReceiverInput,
   ): Promise<ShipmentReceiverUpdateView> {
     const res = await request<BackendUpdateReceiverResult>(
@@ -124,7 +124,7 @@ export const shipmentsApi = {
    * (`403` otherwise). Never calls GHN directly — the backend simulates it.
    */
   async setDemoStatus(
-    orderId: number,
+    orderId: string,
     body: SetDemoStatusInput,
   ): Promise<ShipmentSyncView> {
     const res = await request<BackendSyncResult>(

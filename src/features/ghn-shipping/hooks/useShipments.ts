@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/queryKeys";
 import { shipmentsApi } from "../api/shipments";
+import { isOrderPublicId } from "../lib/public-ids";
 import type {
   SetDemoStatusInput,
   ShipmentCodUpdateView,
@@ -38,22 +39,22 @@ export function useShipmentList(
 }
 
 export function useShipmentDetail(
-  orderId: number | null,
+  orderId: string | null,
 ): UseQueryResult<ShipmentDetailView> {
   return useQuery({
-    queryKey: queryKeys.shipments.detail(orderId ?? -1),
-    queryFn: ({ signal }) => shipmentsApi.detail(orderId ?? -1, signal),
-    enabled: orderId !== null && Number.isFinite(orderId) && orderId > 0,
+    queryKey: queryKeys.shipments.detail(orderId ?? ""),
+    queryFn: ({ signal }) => shipmentsApi.detail(orderId ?? "", signal),
+    enabled: orderId !== null && isOrderPublicId(orderId),
   });
 }
 
 export function useShipmentHistory(
-  orderId: number | null,
+  orderId: string | null,
 ): UseQueryResult<ShipmentHistoryRow[]> {
   return useQuery({
-    queryKey: queryKeys.shipments.history(orderId ?? -1),
-    queryFn: ({ signal }) => shipmentsApi.history(orderId ?? -1, signal),
-    enabled: orderId !== null && Number.isFinite(orderId) && orderId > 0,
+    queryKey: queryKeys.shipments.history(orderId ?? ""),
+    queryFn: ({ signal }) => shipmentsApi.history(orderId ?? "", signal),
+    enabled: orderId !== null && isOrderPublicId(orderId),
   });
 }
 
@@ -65,8 +66,8 @@ export function useShipmentHistory(
  */
 export function useSyncShipment() {
   const queryClient = useQueryClient();
-  return useMutation<ShipmentSyncView, Error, number>({
-    mutationFn: (orderId: number) => shipmentsApi.sync(orderId),
+  return useMutation<ShipmentSyncView, Error, string>({
+    mutationFn: (orderId: string) => shipmentsApi.sync(orderId),
     onSuccess: (_result, orderId) => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.shipments.detail(orderId),
@@ -82,7 +83,7 @@ export function useSyncShipment() {
 }
 
 interface ShipmentActionInput {
-  orderId: number;
+  orderId: string;
   action: ShipmentManualAction;
 }
 
@@ -106,7 +107,7 @@ export function useShipmentAction() {
 
 function invalidateOrder(
   queryClient: ReturnType<typeof useQueryClient>,
-  orderId: number,
+  orderId: string,
 ): void {
   void queryClient.invalidateQueries({
     queryKey: queryKeys.shipments.detail(orderId),
@@ -120,7 +121,7 @@ function invalidateOrder(
 }
 
 interface UpdateCodInputArgs {
-  orderId: number;
+  orderId: string;
   body: UpdateCodInput;
 }
 
@@ -134,7 +135,7 @@ export function useUpdateCod() {
 }
 
 interface UpdateReceiverInputArgs {
-  orderId: number;
+  orderId: string;
   body: UpdateReceiverInput;
 }
 
@@ -149,7 +150,7 @@ export function useUpdateReceiver() {
 }
 
 interface SetDemoStatusInputArgs {
-  orderId: number;
+  orderId: string;
   body: SetDemoStatusInput;
 }
 

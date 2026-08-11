@@ -8,7 +8,7 @@ export const queryKeys = {
     all: ["shipments"] as const,
     list: (params: ShipmentListParams) =>
       ["shipments", "list", params] as const,
-    detail: (orderId: number) => ["shipments", orderId] as const,
-    history: (orderId: number) => ["shipments", orderId, "history"] as const,
+    detail: (orderId: string) => ["shipments", orderId] as const,
+    history: (orderId: string) => ["shipments", orderId, "history"] as const,
   },
 } as const;

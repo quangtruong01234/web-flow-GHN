@@ -4,15 +4,18 @@ import {
   toActionView,
   toCodUpdateView,
   toReceiverUpdateView,
+  toShipmentDetailView,
   toShipmentListItem,
 } from "./adapters";
 import {
   backendActionResult,
   backendBuyer,
   backendCodUpdateResult,
+  backendDetailResponse,
   backendListItem,
   backendReceiverUpdateResult,
   backendSeller,
+  ORDER_PUBLIC_ID,
 } from "../testing/fixtures";
 
 describe("mapOrderStatusToLocal", () => {
@@ -60,7 +63,7 @@ describe("toActionView", () => {
   it("adapts cancel/return results and maps backend canceled to local cancelled", () => {
     const result = toActionView(
       backendActionResult({
-        orderId: 110,
+        orderId: ORDER_PUBLIC_ID,
         action: "return",
         ghnOrderCode: "GHN110",
         message: "Return requested",
@@ -77,9 +80,9 @@ describe("toActionView", () => {
 describe("toCodUpdateView", () => {
   it("passes through the COD amounts and success flag", () => {
     const view = toCodUpdateView(
-      backendCodUpdateResult({ orderId: 110, ghnOrderCode: "GHN110" }),
+      backendCodUpdateResult({ orderId: ORDER_PUBLIC_ID, ghnOrderCode: "GHN110" }),
     );
-    expect(view.orderId).toBe(110);
+    expect(view.orderId).toBe(ORDER_PUBLIC_ID);
     expect(view.previousCodAmount).toBe(250000);
     expect(view.newCodAmount).toBe(0);
     expect(view.success).toBe(true);
@@ -90,7 +93,7 @@ describe("toReceiverUpdateView", () => {
   it("passes through the updated fields and shipping address", () => {
     const view = toReceiverUpdateView(
       backendReceiverUpdateResult({
-        orderId: 110,
+        orderId: ORDER_PUBLIC_ID,
         ghnOrderCode: "GHN110",
         shippingAddress: "Lan|0900000000|12 Lê Lợi|Ward|District|Province",
         updatedFields: ["toName", "toAddress"],
@@ -104,7 +107,7 @@ describe("toReceiverUpdateView", () => {
 
 describe("toShipmentListItem", () => {
   const base = backendListItem({
-    orderId: 42,
+    orderId: ORDER_PUBLIC_ID,
     ghnOrderCode: "GHN123",
     availableActions: ["read", "history", "sync"],
     buyer: backendBuyer({ name: "Nguyễn An" }),
@@ -113,7 +116,7 @@ describe("toShipmentListItem", () => {
 
   it("adapts the row and resolves names with fallbacks", () => {
     const row = toShipmentListItem(base);
-    expect(row.orderId).toBe(42);
+    expect(row.orderId).toBe(ORDER_PUBLIC_ID);
     expect(row.localStatus).toBe("shipping");
     expect(row.ghnStatus).toBe("delivering");
     expect(row.buyerName).toBe("Nguyễn An"); // name preferred
@@ -123,8 +126,8 @@ describe("toShipmentListItem", () => {
 
   it("uses '#id' fallback when the user summary is missing", () => {
     const row = toShipmentListItem({ ...base, buyer: null, seller: null });
-    expect(row.buyerName).toBe("Buyer #7");
-    expect(row.sellerName).toBe("Seller #9");
+    expect(row.buyerName).toBe("Buyer #usr_0000000000000007");
+    expect(row.sellerName).toBe("Seller #usr_0000000000000009");
   });
 
   it("cannot sync without a sync action, and keeps unmapped GHN status raw", () => {
@@ -136,5 +139,27 @@ describe("toShipmentListItem", () => {
     expect(row.canSync).toBe(false);
     expect(row.ghnStatus).toBeNull();
     expect(row.rawGhnStatus).toBe("weird_state");
+  });
+});
+
+describe("toShipmentDetailView", () => {
+  it("preserves opaque product ids and legacy null references", () => {
+    const withPublicId = toShipmentDetailView(backendDetailResponse());
+    const withLegacyNull = toShipmentDetailView(
+      backendDetailResponse({
+        localOrder: {
+          ...backendDetailResponse().localOrder,
+          items: [
+            {
+              ...backendDetailResponse().localOrder.items[0],
+              productId: null,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(withPublicId.items[0].productId).toBe("prod_0000000000000011");
+    expect(withLegacyNull.items[0].productId).toBeNull();
   });
 });
