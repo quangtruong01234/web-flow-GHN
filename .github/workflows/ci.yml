@@ -1,4 +1,4 @@
-name: CI
+name: CI / CD
 
 on:
   push:
@@ -7,10 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Cancel superseded runs on the same branch/PR.
+# Cancel superseded runs on the same branch/PR — except on main, where a
+# cancelled run can kill an in-flight production deploy halfway through.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -76,10 +77,18 @@ jobs:
     name: Deploy to Vercel
     needs: [verify, e2e]
     runs-on: ubuntu-latest
+    # A blocked or stuck Vercel deploy otherwise sits at "Building…" until the
+    # 6h default runner limit.
+    timeout-minutes: 20
     # Forked PRs cannot read secrets — skip instead of failing.
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
+    # Registers the run as a real GitHub deployment, so the Environments tab,
+    # the commit, and the PR all show what is live and link to it.
+    environment:
+      name: ${{ (github.ref == 'refs/heads/main' && github.event_name != 'pull_request') && 'production' || 'preview' }}
+      url: ${{ steps.deploy.outputs.url }}
     permissions:
       contents: read
       pull-requests: write
@@ -143,8 +152,26 @@ jobs:
         if: steps.guard.outputs.configured == 'true'
         run: |
           url=$(vercel deploy --prebuilt ${{ steps.target.outputs.prod_flag }} --token="$VERCEL_TOKEN")
+          if [ -z "$url" ]; then
+            echo "vercel deploy returned no URL" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed (${{ steps.target.outputs.env }}): $url" >> "$GITHUB_STEP_SUMMARY"
+
+      # Vercel refuses deployments whose git author is not on the account, and
+      # reports it as a BLOCKED state rather than a non-zero exit — the failure
+      # that once left this job at "Building…" for 45 minutes.
+      - name: Verify deployment state
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          state=$(vercel inspect "${{ steps.deploy.outputs.url }}" --token="$VERCEL_TOKEN" 2>&1 \
+            | grep -oE '(READY|ERROR|CANCELED|BLOCKED|QUEUED|BUILDING|INITIALIZING)' | head -1)
+          echo "State: ${state:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$state" != "READY" ]; then
+            echo "Deployment is not READY (got '${state:-unknown}')." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Comment preview URL on PR
         if: steps.guard.outputs.configured == 'true' && github.event_name == 'pull_request'
