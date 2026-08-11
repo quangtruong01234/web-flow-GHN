@@ -1,0 +1,4 @@
+interface:
+  display_name: "Weekly Backlog Sweep"
+  short_description: "Audit or fix the GHN console backlog"
+  default_prompt: "Use $sweep to execute the GHN console backlog workflow."
