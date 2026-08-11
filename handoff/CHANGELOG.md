@@ -10,6 +10,27 @@ context if relevant).
 
 ---
 
+### 2026-08-11 — Refunded/return-requested orders no longer render as "Pending"
+
+- `BackendOrderStatus` was missing two of the backend's nine `OrderStatus` values,
+  `return_requested` and `refunded`. `mapOrderStatusToLocal()` therefore hit its
+  `default` branch and returned `"pending"`, so a refunded order showed a **"Pending"**
+  badge on `/dashboard`, `/shipments` and `/shipments/:id`. Found on prod during a
+  storefront-agent sweep of `web-flow-ghn.vercel.app` (an order with
+  `orderStatus: "refunded"` listed as Pending).
+- Added both values to `BackendOrderStatus`, added a `refunded` `LocalStatus` with its
+  own badge meta (violet, label "Refunded"), and mapped `return_requested → refunding`,
+  `refunded → refunded`.
+- The "Local status" filter dropdown was missing the same two options even though the
+  gateway accepts `?status=return_requested` / `?status=refunded` — both added.
+- Regression test pins the two branches (`adapters.test.ts`). Verified: `tsc --noEmit`
+  clean, ESLint clean, Jest 12 suites / 59 tests green, `next build` OK.
+- Two things checked and deliberately **not** changed, recorded in
+  `../.agent-local/frontend-handoff-ghn.md`: the created-from/created-to date filters do
+  fire (the earlier "no request" reading was a test-tool artifact — it set `input.value`
+  without React's `onChange`), and `/403` for role `admin` is intentional per
+  `ALLOWED_ROLES`.
+
 ### 2026-08-11 — Gateway role reshape integrated (prod `/403` fix)
 
 - `BackendRole` is now `{ id, name, slug }` and `AuthContext` reads `role.name`. The

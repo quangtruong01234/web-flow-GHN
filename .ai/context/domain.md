@@ -32,7 +32,9 @@ available because GHN drives redelivery internally.
   `ready_to_pick`, `picking`, `delivering`, `delivered`, `delivery_fail`,
   `waiting_to_return`, `returned`, `cancelled`.
 - `LocalStatus` - TryBuy's own order status, mapped by the backend:
-  `pending`, `confirmed`, `shipping`, `completed`, `refunding`, `cancelled`.
+  `pending`, `confirmed`, `shipping`, `completed`, `refunding`, `refunded`,
+  `cancelled`. The backend `OrderStatus` enum has nine values; `return_requested` maps to
+  `refunding` and `refunded` maps to `refunded`.
 
 Do not collapse these into one field, and do not derive `LocalStatus` from `GhnStatus` on
 the client as if it were authoritative.
