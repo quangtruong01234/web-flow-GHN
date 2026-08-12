@@ -27,8 +27,8 @@ files.
 
 | Account          | Role                 | Use for                                                                |
 | ---------------- | -------------------- | ---------------------------------------------------------------------- |
-| `logistics_test` | `logistics_operator` | read-only screens; sync must be hidden, disabled, or 403               |
-| `shipmgr_test`   | `shipping_manager`   | read + manual sync for eligible shipments                              |
+| `logistics_test` | `logistics_operator` | read-only screens; the gateway returns `["read", "history"]` so no carrier action renders |
+| `shipmgr_test`   | `shipping_manager`   | read + the carrier actions the order's state allows                    |
 | `testadmin`      | `admin`              | temporary legacy compatibility only; never the production GHN role      |
 
 Passwords live in the accounts file. Pass them through env vars such as `E2E_USERNAME` and

@@ -38,11 +38,20 @@ Treat every rule in those files as active project guidance.
 - Manual GHN cancel, return, update COD, update receiver info, and demo-status are wired
   to backend gateway routes and driven by `availableActions` / demo-mode gating.
   Delivery-again is intentionally not available.
+- **Carrier actions are gated by `availableActions` alone** — the gateway filters that array
+  by permission *and* by order state, so the console adds no role check beside it. The
+  demo-status control is the one exception (no entry in the array). See risks.md item 14.
+- Backend contract batch **BATCH-0812** is integrated: GHN-ACT-01, GHN-RAW-01, GHN-HIST-01,
+  GHN-RBAC-01, GHN-ENUM-01 and the RESIL-01 400/503 error split. Analytics money fields are
+  nullable and hidden (never zeroed) when the backend omits them; cleared list filters are
+  omitted from the query; `history[].actorId` accepts legacy numeric ids. See
+  `handoff/CHANGELOG.md` 2026-08-12.
 - The business analytics dashboard (`GET /api/order/admin/analytics`) is wired on
   `/dashboard` (`AnalyticsPanel`): summary KPIs, revenue over time, status distribution,
   top products. Readable by `logistics_operator` — do not gate it behind
   `shipping_manager`.
-- Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`.
+- Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
+  `npm.cmd test` (Jest, 84 tests / 13 suites), `npx.cmd playwright test` (10 specs).
 
 ## Next task order
 

@@ -39,8 +39,8 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
 - **Risk:** Historical backend only had generic roles for shipping grants.
 - **Impact:** Resolved. Backend has `logistics_operator` and `shipping_manager` roles and
   test accounts for this console.
-- **Current status:** FE gates protected routes with `ALLOWED_ROLES`; sync is restricted by
-  role and backend `availableActions`.
+- **Current status:** FE gates protected routes with `ALLOWED_ROLES`; carrier actions are
+  gated by backend `availableActions` alone (see item 14).
 - **Owner/area:** Backend RBAC + frontend auth - done.
 
 ## 5. `shipper` role must not be created
@@ -139,3 +139,75 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
 - **Suggested fix:** Keep public ids opaque and never parse, numerically sort, or compare
   them with internal database keys.
 - **Owner/area:** Frontend auth + shipment contracts - done.
+
+## 14. Client-side role checks duplicated backend action gating - RESOLVED (2026-08-12)
+
+- **Risk:** The console gated carrier actions on `canSync(role)` *in addition to* the
+  gateway's `availableActions` array, so a role the gateway had authorised still saw
+  disabled buttons and read-only notices.
+- **Impact:** Resolved. `availableActions` is now the single source of truth on
+  `/shipments/:id` and `/sync`; the gateway already filters it by permission **and** by
+  order state, so a second client-side check could only be wrong.
+- **Current status:** No carrier action reads the role. `canSync()` survives only for the
+  demo-status control, which has no `availableActions` entry. Runtime-verified on
+  2026-08-12: `logistics_operator` receives `["read","history"]` and gets the read-only
+  panel; `shipping_manager` receives exactly the actions the order's state allows and the
+  panel renders exactly those.
+- **Suggested fix:** When a new action appears, add it to the array mapping - never add a
+  role branch beside it.
+- **Owner/area:** Frontend shipment actions - done.
+
+## 15. Analytics revenue must be hidden, not zeroed, for `logistics_operator` - RESOLVED (2026-08-12)
+
+- **Risk:** `GET /api/order/admin/analytics` answers 200 for `logistics_operator` but
+  **omits** `summary.totalRevenue`, `summary.averageOrderValue`,
+  `revenueOverTime[].revenue`, and `topProducts[].revenue`. Coercing an absent field to `0`
+  would render "earned nothing" as fact.
+- **Impact:** Resolved. `toAnalyticsView` maps the absent fields to `null` and exposes
+  `revenueVisible`; `AnalyticsPanel` hides the revenue KPIs, plots `orderCount` instead of
+  `revenue`, and ranks top products by quantity sold.
+- **Current status:** The branch is on the field, never on the role, so it stays correct if
+  the backend moves the grant. Covered by `api/analytics.test.ts` and
+  `components/AnalyticsPanel.test.tsx` (including a "never print a zero" assertion).
+- **Suggested fix:** Any future money field follows the same rule - nullable in the view
+  model, hidden when null.
+- **Owner/area:** Frontend analytics - done.
+
+## 16. GHN filter enums now 400 instead of an empty 200 - RESOLVED (2026-08-12)
+
+- **Risk:** `?status=` / `?ghnStatus=` with a bogus **or empty** value is a `400` naming the
+  accepted set. A cleared filter sent as an empty string breaks the list.
+- **Impact:** Resolved. The query builder omits a cleared key, the GHN-status dropdown is
+  generated from the 23 accepted values, and a `400` renders verbatim with no Retry button
+  (the same request can never succeed).
+- **Current status:** The two vocabularies are kept apart: GHN accepts both `cancel` and
+  `cancelled`, while the local status is `canceled`. Each value goes to its own param with
+  no normalisation.
+- **Suggested fix:** Never map a console-local label onto either param; add new values to
+  `GHN_STATUS_FILTER_VALUES` only after the backend accepts them.
+- **Owner/area:** Frontend shipment list - done.
+
+## 17. GHN failures split across 400 (refusal) and 503 (outage) - RESOLVED (2026-08-12)
+
+- **Risk:** A GHN refusal is a `400` whose message is `"GHN <action> error: <reason>"` and
+  retrying cannot help; an outage/timeout/open circuit is a `503` where retrying is the
+  right advice. Collapsing both into one banner tells the operator the wrong thing.
+- **Impact:** Resolved. `lib/mutation-errors.ts` branches on `statusCode` and surfaces the
+  GHN reason verbatim; `400` gets "retrying will not help", `503` gets retry-later copy.
+- **Current status:** A local-guard `400` (e.g. "action not allowed for status") keeps its
+  own copy and is also shown verbatim. The envelope's `error` field still reads
+  `"HttpException"` for microservice-propagated errors, so nothing branches on it.
+- **Suggested fix:** Keep branching on `statusCode`; do not pattern-match `error`.
+- **Owner/area:** Frontend mutation error states - done.
+
+## 18. `ghnDetail.raw` is a backend allow-list
+
+- **Risk:** `raw` passes through a backend allow-list (~43 keys). Anything outside it -
+  `shop_id`, `client_id`, warehouse ids, IPs, `transaction_id` - is `undefined`, and GHN
+  adds keys without notice.
+- **Impact:** None today: the console reads no key out of `raw` (grep-verified 2026-08-12);
+  every rendered scalar comes from `ghnDetail`'s top level.
+- **Current status:** Documented on the `raw` field in `api/types.ts`.
+- **Suggested fix:** Do not start reading `raw.<key>`. If a GHN field is genuinely needed,
+  ask the backend to allow-list it rather than parsing a substitute.
+- **Owner/area:** Frontend shipment detail.

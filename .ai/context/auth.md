@@ -28,7 +28,13 @@ export const ALLOWED_ROLES = ["logistics_operator", "shipping_manager"];
 
 - Target GHN console roles are `logistics_operator` and `shipping_manager`.
 - The backend has shipping-role accounts for this console.
-- `shipping_manager` may run manual sync. `logistics_operator` is read-only for sync.
+- Carrier actions (sync, cancel, return, update COD, update receiver) are gated by the
+  gateway's `availableActions` array, never by a client-side role check: the gateway
+  already filters the array by permission **and** by order state (GHN-ACT-01). In
+  practice `logistics_operator` gets `["read", "history"]`; `shipping_manager` gets the
+  actions the order's state allows.
+- The demo-status control is the one exception — it has no `availableActions` entry, so it
+  keeps the `canSync()` role check in `@/context/AuthContext`.
 - Generic `admin` may still appear in legacy gateway path prefixes or temporary
   compatibility checks, but it must not be treated as the production GHN role.
 - Do **not** create a `shipper` role. GHN shippers are external actors using GHN's own app.

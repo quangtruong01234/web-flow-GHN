@@ -10,6 +10,60 @@ context if relevant).
 
 ---
 
+### 2026-08-12 — BATCH-0812: backend action/RBAC/enum/error contracts integrated
+
+Integrated the five release-blocking items from `../.agent-local/frontend-handoff-ghn.md`
+plus the RESIL-01 error contract, which only became reachable once GHN-ACT-01 restored the
+buttons. This unblocks the backend push (`release-gate.md`, `web-flow-GHN` cell → ✅).
+
+- **GHN-ACT-01 — `availableActions` is the only gate.** Removed the client-side role check
+  that sat on top of the array in `ShipmentDetail` and `GhnSyncPage`. The gateway already
+  filters the array by permission **and** by order state, so the second check could only
+  disagree with the server. `logistics_operator` now gets a genuine read-only panel because
+  the array says `["read","history"]`, not because the console recognises the role;
+  `shipping_manager` gets exactly the buttons the order's state allows. `canSync()` survives
+  for the demo-status control only — it has no entry in the array.
+- **GHN-RBAC-01 — revenue hidden, never zeroed.** `toAnalyticsView` exposes `revenueVisible`
+  and maps the four omitted money fields to `null`; `AnalyticsPanel` hides the revenue KPIs
+  and the Revenue column, plots `orderCount` ("Completed orders over time") instead of
+  `revenue`, and ranks top products by quantity sold. Branches on the field, never the role.
+- **GHN-HIST-01 — opaque actor ids.** `history[].actorId` is typed `string | number | null`
+  because audit rows written before the deploy keep numeric ids forever; the adapter
+  normalises to a string and blank/missing to `null`. The timeline renders
+  `· by operator <id>` with no `#` prefix, and nothing parses ids out of `message`.
+- **GHN-ENUM-01 — cleared filters are omitted.** A cleared filter key is dropped from the
+  query instead of sent empty (`?status=` is now a 400), the GHN-status dropdown comes from
+  the 23 accepted values, and a filter `400` renders verbatim with no Retry button. `status`
+  and `ghnStatus` keep separate vocabularies — GHN accepts `cancel` and `cancelled`, the
+  local status is `canceled`, and nothing normalises across them.
+- **GHN-RAW-01 — documentation only.** Nothing in the console reads a key out of
+  `ghnDetail.raw` (grep-verified); the rendered scalars all come from `ghnDetail`'s top
+  level. Recorded the allow-list on the field in `api/types.ts` so nobody starts.
+- **RESIL-01 — 400 refusal vs 503 outage.** `lib/mutation-errors.ts` branches on
+  `statusCode`: a `400` prefixed `GHN <action> error:` becomes "GHN rejected the action"
+  with the GHN reason verbatim plus "retrying will not help"; a `503` becomes "GHN
+  temporarily unavailable" with retry-later copy. A local-guard `400` keeps its own title
+  and is still shown verbatim. Nothing branches on the envelope's `error` field, which
+  still reads `"HttpException"`.
+- **Tests:** 27 new Jest cases (59 → 84 total; two stale role-gating tests replaced) across
+  `api/analytics.test.ts`, `api/adapters.test.ts`,
+  `lib/mutation-errors.test.ts`, `components/ShipmentTable.test.tsx`,
+  `components/ShipmentDetail.test.tsx`, `components/GhnSyncPage.test.tsx`, and a new
+  `components/AnalyticsPanel.test.tsx`. `e2e/role-matrix.spec.ts` now expresses the
+  read-only role through the mocked `availableActions` array and asserts unadvertised
+  actions are **absent**, not disabled.
+- **Verified:** ESLint clean, `npx.cmd tsc --noEmit` exit 0, `next build` exit 0, Jest
+  **84/84** in 13 suites, Playwright **10/10**. Runtime-checked against the live gateway as
+  both roles: operator list rows return `["read","history"]` and `/sync` shows the empty
+  state; manager gets `["read","history","sync"]` on a canceled order and the six actions on
+  pending/processing, rendered exactly as advertised (no "Return to seller" at `pending`).
+  Analytics as the operator returns 200 with no `revenue` key anywhere and the dashboard
+  hides money. `?ghnStatus=bogus_state`, `?ghnStatus=`, `?status=` → 400 naming the accepted
+  set; `?ghnStatus=cancel`, `?ghnStatus=cancelled`, `?status=canceled` → 200. Cancel on an
+  already-canceled order → local-guard 400, surfaced verbatim; sync on an unknown id → 404.
+  The `GHN <action> error:` 400 branch cannot be forced without a real GHN refusal, so it is
+  covered by unit tests only.
+
 ### 2026-08-11 — Refunded/return-requested orders no longer render as "Pending"
 
 - `BackendOrderStatus` was missing two of the backend's nine `OrderStatus` values,

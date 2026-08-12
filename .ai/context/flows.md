@@ -54,14 +54,16 @@ Cross-references: `.ai/context/auth.md`, `.ai/context/data-fetching.md`,
 
 - **Purpose:** Sync GHN status and trigger backend-backed cancel/return actions, waybill
   edits, and demo status changes.
-- **Actors:** Authenticated logistics user; `shipping_manager` may sync.
+- **Actors:** Authenticated logistics user; the gateway's `availableActions` array decides
+  which actions the console offers.
 - **Steps:**
   1. Manual sync uses `useSyncShipment()` and calls
      `POST /api/order/admin/ghn/orders/:id/sync`.
   2. On success it invalidates affected detail/history/list Query keys.
-  3. Sync visibility/availability is gated by role and backend `availableActions`.
+  3. Sync availability comes from backend `availableActions` alone (`canSync` mirrors
+     `availableActions.includes("sync")`).
   4. Cancel, return, update COD, and update receiver render only when backend
-     `availableActions` includes the action and the user has the `shipping_manager` role.
+     `availableActions` includes the action — no extra client-side role check.
   5. Cancel/return call `POST /api/order/admin/ghn/orders/:id/{cancel|return}`; waybill
      edits call `update-cod` / `update-receiver`; demo mode calls `demo-status`. Each
      mutation invalidates detail/history/list Query keys after success.
@@ -81,8 +83,9 @@ Cross-references: `.ai/context/auth.md`, `.ai/context/data-fetching.md`,
 - **Purpose:** Restrict the console to allowed logistics roles.
 - **Steps:** `AuthGate` checks `user.role` against `ALLOWED_ROLES`. A disallowed role goes
   to `/403`.
-- **Sync rule:** `logistics_operator` is read-only for sync; `shipping_manager` can sync
-  eligible shipments.
+- **Action rule:** carrier actions render from the gateway's `availableActions` array, not
+  from the role. The gateway filters that array by permission and order state, so
+  `logistics_operator` receives `["read", "history"]` and sees a read-only panel.
 - **Known gaps:** None for current role gating; demo-status additionally requires the
   frontend and backend demo flags.
 
