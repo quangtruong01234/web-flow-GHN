@@ -211,6 +211,18 @@ export function toShipmentDetailView(
   };
 }
 
+/**
+ * GHN-HIST-01: `actorId` is an opaque `usr_...` public id from 2026-08-12 on,
+ * while history rows written before that deploy keep a numeric id (a history row
+ * is an immutable audit record). Normalise both to a string so the UI never
+ * formats an opaque id as `#<number>`.
+ */
+function normalizeActorId(actorId: string | number | null): string | null {
+  if (actorId === null || actorId === undefined) return null;
+  const value = String(actorId).trim();
+  return value === "" ? null : value;
+}
+
 export function toHistoryRow(row: BackendShippingHistory): ShipmentHistoryRow {
   return {
     id: row.id,
@@ -221,7 +233,7 @@ export function toHistoryRow(row: BackendShippingHistory): ShipmentHistoryRow {
     ghnStatus: row.ghnStatus,
     success: row.success,
     message: row.message,
-    actorId: row.actorId,
+    actorId: normalizeActorId(row.actorId),
     createdAt: row.createdAt,
   };
 }

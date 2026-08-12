@@ -33,6 +33,41 @@ export type BackendOrderStatus =
   | "return_requested"
   | "refunded";
 
+/**
+ * GHN status values the list endpoint accepts for `?ghnStatus=` (GHN-ENUM-01,
+ * backend 2026-08-12: the filter is `@IsIn([...])`, so anything else answers
+ * 400 instead of an empty 200). Spelled exactly as GHN spells them — note the
+ * GHN side takes both `cancel` and `cancelled` (double `l`) while the LOCAL
+ * status is `canceled` (single `l`). Never normalise across the two params.
+ */
+export const GHN_STATUS_FILTER_VALUES = [
+  "ready_to_pick",
+  "picking",
+  "money_collect_picking",
+  "picked",
+  "storing",
+  "transporting",
+  "sorting",
+  "delivering",
+  "money_collect_delivering",
+  "delivered",
+  "delivery_fail",
+  "waiting_to_return",
+  "return",
+  "return_transporting",
+  "return_sorting",
+  "returning",
+  "return_fail",
+  "returned",
+  "cancel",
+  "cancelled",
+  "exception",
+  "damage",
+  "lost",
+] as const;
+
+export type GhnStatusFilter = (typeof GHN_STATUS_FILTER_VALUES)[number];
+
 /** Backend payment method enum. */
 export type BackendPaymentMethod = "zalopay" | "vnpay" | "cod";
 
@@ -103,6 +138,14 @@ export interface BackendGhnDetail {
   toAddress: string | null;
   fromName: string | null;
   fromPhone: string | null;
+  /**
+   * GHN-RAW-01 (backend 2026-08-12): the backend passes GHN's detail payload
+   * through an allow-list (~43 keys) before forwarding it — `shop_id`,
+   * `client_id`, warehouse ids, client IPs and every other GHN-internal field
+   * are gone. Treat it as opaque: the console renders only the top-level
+   * scalars above and reads no key out of `raw`. If a GHN field is ever needed,
+   * ask the backend to allow-list it rather than digging elsewhere for it.
+   */
   raw: Record<string, unknown>;
 }
 
@@ -138,7 +181,12 @@ export interface BackendShippingHistory {
   id: string;
   orderId: string;
   type: "webhook" | "manual_sync" | "action";
-  actorId: number | null;
+  /**
+   * GHN-HIST-01 (backend 2026-08-12): now an opaque `usr_...` public id. Rows
+   * written before that deploy still carry the numeric actor id, so accept
+   * both on the wire and normalise to a string in the adapter.
+   */
+  actorId: string | number | null;
   action: string;
   previousStatus: string | null;
   newStatus: string | null;
@@ -232,14 +280,19 @@ export interface BackendUpdateReceiverResult {
 // Request params
 // ---------------------------------------------------------------------------
 
-/** Query params accepted by the list endpoint. */
+/**
+ * Query params accepted by the list endpoint. Both status filters are validated
+ * server-side with `@IsIn` (GHN-ENUM-01), so a value outside these unions — or
+ * an empty string — answers 400. Omit the key when a filter is cleared; the
+ * query builder in `@/lib/api` already drops `undefined`/`null`/`""`.
+ */
 export interface ShipmentListParams {
   page?: number;
   limit?: number;
   /** Local order status filter (backend `OrderStatus` value). */
   status?: BackendOrderStatus;
-  /** Raw GHN status filter. */
-  ghnStatus?: string;
+  /** Raw GHN status filter, exactly as GHN spells it. */
+  ghnStatus?: GhnStatusFilter;
   hasGhnCode?: boolean;
   search?: string;
   dateFrom?: string;
@@ -342,8 +395,10 @@ export interface ShipmentHistoryRow {
   newStatus: string | null;
   ghnStatus: string | null;
   success: boolean;
+  /** Opaque audit text — render verbatim, never parse ids out of it. */
   message: string | null;
-  actorId: number | null;
+  /** Opaque actor reference (`usr_...`; legacy rows carry a numeric id as a string). */
+  actorId: string | null;
   createdAt: string;
 }
 

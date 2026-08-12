@@ -12,7 +12,12 @@ import {
   fmtDateTime,
   fmtFeeNullable,
 } from "../lib/shipment-formatters";
-import type { BackendOrderStatus, ShipmentListParams } from "../api/types";
+import { isApiError } from "@/lib/api";
+import type {
+  BackendOrderStatus,
+  GhnStatusFilter,
+  ShipmentListParams,
+} from "../api/types";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
 import { GhnStatusBadge, LocalStatusBadge } from "./ShipmentStatusBadge";
@@ -32,8 +37,10 @@ const LOCAL_STATUS_OPTIONS: Array<{ value: BackendOrderStatus; label: string }> 
   { value: "refunded", label: "Refunded" },
 ];
 
-// Canonical GHN status strings (server filters on the recorded raw value).
-const GHN_STATUS_OPTIONS = [
+// Canonical GHN status strings (server filters on the recorded raw value with
+// `@IsIn(GHN_STATUS_FILTER_VALUES)` — a value outside that set answers 400, so
+// the union keeps a typo from compiling).
+const GHN_STATUS_OPTIONS: GhnStatusFilter[] = [
   "ready_to_pick",
   "picking",
   "delivering",
@@ -48,7 +55,7 @@ export function ShipmentTable() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | BackendOrderStatus>("all");
-  const [ghnStatus, setGhnStatus] = useState<"all" | string>("all");
+  const [ghnStatus, setGhnStatus] = useState<"all" | GhnStatusFilter>("all");
   const [hasGhnCode, setHasGhnCode] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -65,6 +72,8 @@ export function ShipmentTable() {
     setPage(1);
   }, [search, status, ghnStatus, hasGhnCode, dateFrom, dateTo]);
 
+  // A cleared filter must be OMITTED, not sent empty: `?status=` is now a 400
+  // (GHN-ENUM-01). `undefined` values are dropped by the query builder.
   const params = useMemo<ShipmentListParams>(
     () => ({
       page,
@@ -79,7 +88,13 @@ export function ShipmentTable() {
     [page, search, status, ghnStatus, hasGhnCode, dateFrom, dateTo],
   );
 
-  const { data, isPending, isError, isFetching, refetch } = useShipmentList(params);
+  const { data, error, isPending, isError, isFetching, refetch } =
+    useShipmentList(params);
+
+  // A 400 means the gateway rejected a filter value and names the accepted set —
+  // show that message instead of the generic "try again" copy, which would send
+  // the operator retrying a request that can never succeed.
+  const rejectedFilter = isApiError(error) && error.status === 400 ? error : null;
 
   const items = data?.items ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -136,7 +151,12 @@ export function ShipmentTable() {
             </Select>
           </Field>
           <Field label="GHN status">
-            <Select value={ghnStatus} onChange={(event) => setGhnStatus(event.target.value)}>
+            <Select
+              value={ghnStatus}
+              onChange={(event) =>
+                setGhnStatus(event.target.value as "all" | GhnStatusFilter)
+              }
+            >
               <option value="all">All GHN statuses</option>
               {GHN_STATUS_OPTIONS.map((value) => (
                 <option key={value} value={value}>
@@ -177,11 +197,18 @@ export function ShipmentTable() {
         <div className="p-8 text-center text-sm text-ink-500">Loading shipments...</div>
       ) : isError ? (
         <div className="p-5">
-          <ErrorState
-            title="Could not load shipments"
-            message="The shipment list failed to load. Try again in a moment."
-            onRetry={() => void refetch()}
-          />
+          {rejectedFilter ? (
+            <ErrorState
+              title="Filter rejected by the server"
+              message={rejectedFilter.message}
+            />
+          ) : (
+            <ErrorState
+              title="Could not load shipments"
+              message="The shipment list failed to load. Try again in a moment."
+              onRetry={() => void refetch()}
+            />
+          )}
         </div>
       ) : items.length === 0 ? (
         <div className="p-5">

@@ -4,12 +4,21 @@
 // GET /api/order/admin/analytics (global scope, all sellers). Readable by
 // logistics_operator too — do not gate this behind shipping_manager.
 // Charts are hand-rolled Tailwind bars (no chart dependency).
+//
+// GHN-RBAC-01: for a role without revenue visibility the backend omits the four
+// monetary fields and `data.revenueVisible` is false. Then we hide the revenue
+// KPIs, plot order volume instead of money, and drop the Revenue column — the
+// switch is on the field, never on the role.
 
 import { useMemo, useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
-import type { AnalyticsInterval } from "../api/analytics";
+import type {
+  AnalyticsInterval,
+  AnalyticsRevenuePoint,
+  AnalyticsTopProduct,
+} from "../api/analytics";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { fmtVND } from "../lib/shipment-formatters";
 import { ErrorState } from "./ErrorState";
@@ -98,7 +107,11 @@ export function AnalyticsPanel() {
     <Card>
       <CardHeader
         title="Business analytics"
-        subtitle="Global scope (all sellers) — revenue counts completed orders only"
+        subtitle={
+          data && !data.revenueVisible
+            ? "Global scope (all sellers) — revenue figures are hidden for your role"
+            : "Global scope (all sellers) — revenue counts completed orders only"
+        }
         action={rangeControls}
       />
 
@@ -116,12 +129,19 @@ export function AnalyticsPanel() {
         />
       ) : (
         <div className={cn("space-y-5 p-5", isPlaceholderData && "opacity-60")}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard
-              label="Revenue (completed)"
-              value={fmtVNDCompact(data.summary.totalRevenue)}
-              hint={fmtVND(data.summary.totalRevenue)}
-            />
+          <div
+            className={cn(
+              "grid gap-4 sm:grid-cols-2",
+              data.revenueVisible ? "xl:grid-cols-4" : "xl:grid-cols-2",
+            )}
+          >
+            {data.summary.totalRevenue !== null ? (
+              <KpiCard
+                label="Revenue (completed)"
+                value={fmtVNDCompact(data.summary.totalRevenue)}
+                hint={fmtVND(data.summary.totalRevenue)}
+              />
+            ) : null}
             <KpiCard
               label="Completed orders"
               value={String(data.summary.completedOrders)}
@@ -132,19 +152,25 @@ export function AnalyticsPanel() {
               value={String(data.summary.totalOrders)}
               hint="All statuses in the window"
             />
-            <KpiCard
-              label="Avg order value"
-              value={fmtVNDCompact(Math.round(data.summary.averageOrderValue))}
-              hint="Completed orders only"
-            />
+            {data.summary.averageOrderValue !== null ? (
+              <KpiCard
+                label="Avg order value"
+                value={fmtVNDCompact(Math.round(data.summary.averageOrderValue))}
+                hint="Completed orders only"
+              />
+            ) : null}
           </div>
 
           <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
-            <RevenueChart points={data.revenueOverTime} interval={data.interval} />
+            <RevenueChart
+              points={data.revenueOverTime}
+              interval={data.interval}
+              metric={data.revenueVisible ? "revenue" : "orders"}
+            />
             <StatusDistribution rows={data.statusDistribution} />
           </div>
 
-          <TopProducts products={data.topProducts} />
+          <TopProducts products={data.topProducts} showRevenue={data.revenueVisible} />
         </div>
       )}
     </Card>
@@ -214,14 +240,21 @@ function percentBucket(value: number, max: number): number {
 function RevenueChart({
   points,
   interval,
+  metric,
 }: {
-  points: Array<{ period: string; revenue: number; orderCount: number }>;
+  points: AnalyticsRevenuePoint[];
   interval: AnalyticsInterval;
+  /** `orders` plots `orderCount` when the backend omitted revenue for this role. */
+  metric: "revenue" | "orders";
 }) {
-  const max = Math.max(...points.map((point) => point.revenue), 1);
+  const showRevenue = metric === "revenue";
+  const valueOf = (point: AnalyticsRevenuePoint): number =>
+    showRevenue ? (point.revenue ?? 0) : point.orderCount;
+  const title = showRevenue ? "Revenue over time" : "Completed orders over time";
+  const max = Math.max(...points.map(valueOf), 1);
   return (
     <div className="rounded-lg border border-line p-4">
-      <p className="text-[13px] font-semibold text-ink-900">Revenue over time</p>
+      <p className="text-[13px] font-semibold text-ink-900">{title}</p>
       <p className="mt-0.5 text-xs text-ink-500">
         Per {interval === "day" ? "day" : "month"}, completed orders
       </p>
@@ -231,15 +264,23 @@ function RevenueChart({
         </p>
       ) : (
         <>
-          <div className="mt-4 flex h-36 items-end gap-px" role="img" aria-label="Revenue over time bar chart">
+          <div
+            className="mt-4 flex h-36 items-end gap-px"
+            role="img"
+            aria-label={`${title} bar chart`}
+          >
             {points.map((point) => (
               <div
                 key={point.period}
                 className={cn(
                   "flex-1 rounded-t-sm bg-brand-600/80 transition-colors hover:bg-brand-600",
-                  CHART_HEIGHT_CLASSES[percentBucket(point.revenue, max)],
+                  CHART_HEIGHT_CLASSES[percentBucket(valueOf(point), max)],
                 )}
-                title={`${point.period}: ${fmtVND(point.revenue)} · ${point.orderCount} orders`}
+                title={
+                  showRevenue
+                    ? `${point.period}: ${fmtVND(point.revenue ?? 0)} · ${point.orderCount} orders`
+                    : `${point.period}: ${point.orderCount} orders`
+                }
               />
             ))}
           </div>
@@ -293,19 +334,20 @@ function StatusDistribution({
 
 function TopProducts({
   products,
+  showRevenue,
 }: {
-  products: Array<{
-    productId: number;
-    name: string;
-    quantitySold: number;
-    revenue: number;
-  }>;
+  products: AnalyticsTopProduct[];
+  showRevenue: boolean;
 }) {
   return (
     <div className="rounded-lg border border-line">
       <div className="border-b border-line px-4 py-3">
         <p className="text-[13px] font-semibold text-ink-900">Top products</p>
-        <p className="mt-0.5 text-xs text-ink-500">By revenue, completed orders</p>
+        <p className="mt-0.5 text-xs text-ink-500">
+          {showRevenue
+            ? "By revenue, completed orders"
+            : "By quantity sold, completed orders"}
+        </p>
       </div>
       {products.length === 0 ? (
         <p className="px-4 py-6 text-sm text-ink-500">
@@ -317,7 +359,9 @@ function TopProducts({
             <tr className="text-left text-xs text-ink-400">
               <th className="px-4 py-2 font-medium">Product</th>
               <th className="px-4 py-2 text-right font-medium">Qty sold</th>
-              <th className="px-4 py-2 text-right font-medium">Revenue</th>
+              {showRevenue ? (
+                <th className="px-4 py-2 text-right font-medium">Revenue</th>
+              ) : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -329,9 +373,11 @@ function TopProducts({
                 <td className="px-4 py-2.5 text-right text-ink-700">
                   {product.quantitySold}
                 </td>
-                <td className="px-4 py-2.5 text-right text-ink-700">
-                  {fmtVND(product.revenue)}
-                </td>
+                {showRevenue ? (
+                  <td className="px-4 py-2.5 text-right text-ink-700">
+                    {fmtVND(product.revenue ?? 0)}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

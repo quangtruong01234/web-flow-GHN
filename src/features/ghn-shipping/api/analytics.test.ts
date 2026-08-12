@@ -71,6 +71,39 @@ describe("toAnalyticsView", () => {
     expect(completed?.barClass).toBeTruthy();
   });
 
+  // GHN-RBAC-01: a role without revenue visibility gets a 200 with the four
+  // monetary fields OMITTED (not zeroed). Zero would read as "sold nothing".
+  it("reports revenue as hidden when the backend omits the monetary fields", () => {
+    const full = backendResponse();
+    const view = toAnalyticsView({
+      ...full,
+      summary: {
+        completedOrders: full.summary.completedOrders,
+        totalOrders: full.summary.totalOrders,
+      },
+      revenueOverTime: [{ period: "2026-06-01", orderCount: 2 }],
+      topProducts: [{ productId: 7, productName: "Áo thun", quantitySold: 12 }],
+    });
+
+    expect(view.revenueVisible).toBe(false);
+    expect(view.summary).toEqual({
+      totalRevenue: null,
+      completedOrders: 25,
+      totalOrders: 40,
+      averageOrderValue: null,
+    });
+    expect(view.revenueOverTime).toEqual([
+      { period: "2026-06-01", revenue: null, orderCount: 2 },
+    ]);
+    expect(view.topProducts).toEqual([
+      { productId: 7, name: "Áo thun", quantitySold: 12, revenue: null },
+    ]);
+  });
+
+  it("reports revenue as visible when the money fields are present", () => {
+    expect(toAnalyticsView(backendResponse()).revenueVisible).toBe(true);
+  });
+
   it("defaults missing distribution keys and absent arrays to empty/zero", () => {
     const view = toAnalyticsView(
       backendResponse({

@@ -9,6 +9,14 @@
 // the window. `revenue` is goods GMV in integer VND, excluding shipping fee and
 // voucher discount. `period` is `YYYY-MM-DD` (interval=day) or `YYYY-MM`
 // (interval=month), ascending.
+//
+// GHN-RBAC-01 (backend handoff 2026-08-12): a role without `order read:any` and
+// without `shipping update:any` — i.e. `logistics_operator` — still gets 200,
+// but the four monetary fields are ABSENT (not zero): `summary.totalRevenue`,
+// `summary.averageOrderValue`, `revenueOverTime[].revenue`,
+// `topProducts[].revenue`. The view model turns them into `null` and exposes
+// `revenueVisible` so the UI hides the money blocks and plots volume instead.
+// Branch on the field, never on the role.
 
 import { request } from "@/lib/api";
 
@@ -50,14 +58,17 @@ export interface BackendAnalyticsResponse {
   to: string;
   interval: AnalyticsInterval;
   summary: {
-    totalRevenue: number;
+    /** Absent for roles without revenue visibility (GHN-RBAC-01). */
+    totalRevenue?: number;
     completedOrders: number;
     totalOrders: number;
-    averageOrderValue: number;
+    /** Absent for roles without revenue visibility (GHN-RBAC-01). */
+    averageOrderValue?: number;
   };
   revenueOverTime: Array<{
     period: string;
-    revenue: number;
+    /** Absent for roles without revenue visibility (GHN-RBAC-01). */
+    revenue?: number;
     orderCount: number;
   }>;
   statusDistribution: Record<AnalyticsStatusKey, number>;
@@ -65,7 +76,8 @@ export interface BackendAnalyticsResponse {
     productId: number;
     productName: string;
     quantitySold: number;
-    revenue: number;
+    /** Absent for roles without revenue visibility (GHN-RBAC-01). */
+    revenue?: number;
   }>;
 }
 
@@ -75,7 +87,8 @@ export interface BackendAnalyticsResponse {
 
 export interface AnalyticsRevenuePoint {
   period: string;
-  revenue: number;
+  /** `null` when the backend omitted revenue for this role. */
+  revenue: number | null;
   orderCount: number;
 }
 
@@ -90,7 +103,8 @@ export interface AnalyticsTopProduct {
   productId: number;
   name: string;
   quantitySold: number;
-  revenue: number;
+  /** `null` when the backend omitted revenue for this role. */
+  revenue: number | null;
 }
 
 export interface AnalyticsView {
@@ -98,11 +112,18 @@ export interface AnalyticsView {
   to: string;
   interval: AnalyticsInterval;
   summary: {
-    totalRevenue: number;
+    /** `null` when the backend omitted revenue for this role. */
+    totalRevenue: number | null;
     completedOrders: number;
     totalOrders: number;
-    averageOrderValue: number;
+    /** `null` when the backend omitted revenue for this role. */
+    averageOrderValue: number | null;
   };
+  /**
+   * `false` when the backend omitted the monetary fields for this role — hide
+   * the revenue KPIs/columns and plot order volume instead.
+   */
+  revenueVisible: boolean;
   revenueOverTime: AnalyticsRevenuePoint[];
   /** Ordered rows for every known status key (missing keys default to 0). */
   statusDistribution: AnalyticsStatusRow[];
@@ -131,14 +152,15 @@ export function toAnalyticsView(res: BackendAnalyticsResponse): AnalyticsView {
     to: res.to,
     interval: res.interval,
     summary: {
-      totalRevenue: res.summary.totalRevenue,
+      totalRevenue: res.summary.totalRevenue ?? null,
       completedOrders: res.summary.completedOrders,
       totalOrders: res.summary.totalOrders,
-      averageOrderValue: res.summary.averageOrderValue,
+      averageOrderValue: res.summary.averageOrderValue ?? null,
     },
+    revenueVisible: res.summary.totalRevenue !== undefined,
     revenueOverTime: (res.revenueOverTime ?? []).map((point) => ({
       period: point.period,
-      revenue: point.revenue,
+      revenue: point.revenue ?? null,
       orderCount: point.orderCount,
     })),
     statusDistribution: ANALYTICS_STATUS_KEYS.map((status) => ({
@@ -151,7 +173,7 @@ export function toAnalyticsView(res: BackendAnalyticsResponse): AnalyticsView {
       productId: product.productId,
       name: product.productName,
       quantitySold: product.quantitySold,
-      revenue: product.revenue,
+      revenue: product.revenue ?? null,
     })),
   };
 }

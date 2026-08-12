@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { canSync as roleCanSync, useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useShipmentList, useSyncShipment } from "../hooks/useShipments";
 import { fmtDateTime } from "../lib/shipment-formatters";
@@ -18,20 +17,19 @@ import { GhnStatusBadge } from "./ShipmentStatusBadge";
 const SYNC_LIMIT = 50;
 const TERMINAL: ReadonlyArray<string> = ["delivered", "returned", "cancelled"];
 
+// GHN-ACT-01: `canSync` mirrors `availableActions.includes("sync")`, which the
+// gateway already trims by permission and order state — no extra role check.
 function isPendingSync(item: ShipmentListItem): boolean {
   return item.canSync && !(item.ghnStatus !== null && TERMINAL.includes(item.ghnStatus));
 }
 
 export function GhnSyncPage() {
-  const { user } = useAuth();
   const { push } = useToast();
   const { data, isPending, isError, refetch } = useShipmentList({
     page: 1,
     limit: SYNC_LIMIT,
   });
   const sync = useSyncShipment();
-
-  const userMaySync = roleCanSync(user?.role);
 
   const onSync = (orderId: string) => {
     sync.mutate(orderId, {
@@ -88,9 +86,9 @@ export function GhnSyncPage() {
           {lastSync ? fmtDateTime(lastSync) : "Never"}
         </p>
         <p className="mt-2 text-sm text-ink-500">
-          {userMaySync
+          {syncable.length > 0
             ? "Sync individual orders from the list."
-            : "Read-only — syncing requires the shipping manager role."}
+            : "Read-only — no order currently offers the sync action."}
         </p>
       </Card>
 
@@ -122,7 +120,7 @@ export function GhnSyncPage() {
           <EmptyState
             icon="package"
             title="No syncable orders"
-            message="Orders need a GHN order code before they can be synced."
+            message="No order currently advertises the sync action. An order needs a GHN order code, and your role must be allowed to sync it."
           />
         ) : (
           <div className="divide-y divide-line">
@@ -149,7 +147,7 @@ export function GhnSyncPage() {
                     <Button
                       size="sm"
                       onClick={() => onSync(item.orderId)}
-                      disabled={!userMaySync || sync.isPending}
+                      disabled={sync.isPending}
                     >
                       <Icon name="sync" size={15} />
                       {busy ? "Syncing..." : "Sync"}

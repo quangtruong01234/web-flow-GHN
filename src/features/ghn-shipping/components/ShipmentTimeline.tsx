@@ -47,7 +47,8 @@ export function ShipmentTimeline({ history }: { history: ShipmentHistoryRow[] })
               <p className="mt-1 text-xs text-ink-500">
                 {event.ghnStatus ? `GHN: ${rawGhnLabel(event.ghnStatus)}` : "GHN: —"}
                 {change ? ` · Local: ${change}` : ""}
-                {event.actorId ? ` · by operator #${event.actorId}` : ""}
+                {/* Opaque actor id (`usr_...`) — never prefix it with `#`. */}
+                {event.actorId ? ` · by operator ${event.actorId}` : ""}
               </p>
               {event.message ? (
                 <p

@@ -3,19 +3,29 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   backendDetailResponse,
   backendHistoryRow,
+  backendListItem,
   backendMeUser,
   ORDER_PUBLIC_ID,
   backendPaginatedList,
 } from "../src/features/ghn-shipping/testing/fixtures";
 
-// Role-matrix coverage for the read-only `logistics_operator`: list/detail
-// stay readable while sync, carrier actions, waybill edits, and demo controls
-// are disabled with the shipping-manager hint copy. Mirrors the mocked-gateway
-// setup in shipment-actions.spec.ts, which covers `shipping_manager`.
+// Role-matrix coverage for the read-only `logistics_operator`: list/detail stay
+// readable while no carrier action is offered. Mirrors the mocked-gateway setup
+// in shipment-actions.spec.ts, which covers `shipping_manager`.
+//
+// GHN-ACT-01: the gateway trims `availableActions` by permission AND by order
+// state, so the read-only role is expressed by the array the mock returns —
+// `["read", "history"]`, exactly what the live gateway answers for this role —
+// not by a second role check in the console.
+const OPERATOR_ACTIONS = ["read", "history"] as const;
 
 const user = backendMeUser("logistics_operator");
-const detail = backendDetailResponse();
-const list = backendPaginatedList();
+const detail = backendDetailResponse({
+  availableActions: [...OPERATOR_ACTIONS],
+});
+const list = backendPaginatedList({
+  data: [backendListItem({ availableActions: [...OPERATOR_ACTIONS] })],
+});
 const history = [backendHistoryRow({ previousStatus: "shipped" })];
 
 async function setupGateway(page: Page): Promise<void> {
@@ -76,36 +86,30 @@ test.describe("logistics_operator role matrix", () => {
     await expect(page.getByText("Synced from GHN")).toBeVisible();
   });
 
-  test("sync, carrier actions, and waybill edits are disabled on detail", async ({
+  test("detail offers no carrier action when the array advertises none", async ({
     page,
   }) => {
     await setupGateway(page);
     await page.goto(`/shipments/${ORDER_PUBLIC_ID}`);
 
     await expect(
+      page.getByText("The backend lists no carrier actions for this shipment", {
+        exact: false,
+      }),
+    ).toBeVisible();
+
+    await expect(
       page.getByRole("button", { name: "Sync GHN status" }),
     ).toBeDisabled();
-    await expect(
-      page.getByText("Syncing requires the shipping manager role."),
-    ).toBeVisible();
+    await expect(page.getByText("Syncing is not available for this shipment.")).toBeVisible();
 
-    await expect(
-      page.getByRole("button", { name: "Cancel shipment" }),
-    ).toBeDisabled();
-    await expect(
-      page.getByRole("button", { name: "Return to seller" }),
-    ).toBeDisabled();
-    await expect(
-      page.getByText("Carrier actions require the shipping manager role."),
-    ).toBeVisible();
-
-    await expect(page.getByRole("button", { name: "Update COD" })).toBeDisabled();
+    // Unadvertised actions are absent, not merely disabled.
+    await expect(page.getByRole("button", { name: "Cancel shipment" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Return to seller" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Update COD" })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Update receiver info" }),
-    ).toBeDisabled();
-    await expect(
-      page.getByText("Waybill edits require the shipping manager role."),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 
   test("demo controls render read-only", async ({ page }) => {
@@ -122,15 +126,16 @@ test.describe("logistics_operator role matrix", () => {
     ).toBeVisible();
   });
 
-  test("sync page is read-only", async ({ page }) => {
+  test("sync page lists no syncable order", async ({ page }) => {
     await setupGateway(page);
     await page.goto("/sync");
 
     await expect(
-      page.getByText("Read-only — syncing requires the shipping manager role."),
+      page.getByText("Read-only — no order currently offers the sync action."),
     ).toBeVisible();
+    await expect(page.getByText("No syncable orders")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Sync", exact: true }),
-    ).toBeDisabled();
+    ).toHaveCount(0);
   });
 });

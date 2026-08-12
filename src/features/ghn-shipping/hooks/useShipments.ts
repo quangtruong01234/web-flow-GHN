@@ -1,8 +1,9 @@
 "use client";
 
 // React Query hooks for GHN shipment read screens + the manual sync mutation.
-// Read hooks are enabled by default; the sync mutation is the only write and is
-// gated in the UI by `canSync` from the auth context (shipping_manager).
+// Read hooks are enabled by default; write mutations are gated in the UI by the
+// gateway's `availableActions` array (role- and state-filtered server-side), not
+// by a client-side role check.
 
 import {
   useMutation,

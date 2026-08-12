@@ -10,6 +10,7 @@ import type {
   ShipmentSyncView,
 } from "../api/types";
 import {
+  ACTOR_PUBLIC_ID,
   authUser,
   ORDER_PUBLIC_ID,
   shipmentDetailView,
@@ -40,6 +41,9 @@ jest.mock("../hooks/useShipments", () => ({
   useShipmentHistory: jest.fn(),
   useSetDemoStatus: jest.fn(),
   useSyncShipment: jest.fn(),
+  // Mounted only when `availableActions` advertises the waybill edits.
+  useUpdateCod: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+  useUpdateReceiver: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
 }));
 
 interface ShipmentActionInput {
@@ -152,6 +156,65 @@ describe("ShipmentDetail", () => {
     expect(screen.getByText("Synced from GHN")).toBeInTheDocument();
   });
 
+  // GHN-ACT-01: the array is the single source of truth. A shipping_manager on an
+  // order the gateway offers nothing for still sees a read-only panel...
+  it("falls back to a read-only panel when the backend offers no actions", () => {
+    useShipmentDetailMock.mockReturnValue({
+      data: shipmentDetailView({
+        canSync: false,
+        availableActions: ["read", "history"],
+      }),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentDetail>);
+
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.getByText(/lists no carrier actions for this shipment/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Sync GHN status/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /Cancel shipment/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Update COD/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Update receiver info/i })).not.toBeInTheDocument();
+  });
+
+  // ...and a logistics_operator handed the full array gets every button, because
+  // the gateway would not have advertised them without the permission.
+  it("renders every advertised action without re-checking the role", () => {
+    useAuthMock.mockReturnValue({
+      user: authUser("logistics_operator"),
+      ready: true,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
+    useShipmentDetailMock.mockReturnValue({
+      data: shipmentDetailView({
+        availableActions: ["sync", "cancel", "return", "update_cod", "update_receiver"],
+      }),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentDetail>);
+
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.getByRole("button", { name: /Sync GHN status/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Cancel shipment/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Return to seller/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Update COD/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Update receiver info/i })).toBeEnabled();
+    expect(screen.queryByText(/lists no carrier actions/i)).not.toBeInTheDocument();
+  });
+
+  // GHN-HIST-01: the actor is an opaque public id — never decorated with "#".
+  it("attributes a timeline entry to the opaque actor id", () => {
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    const actor = screen.getByText(new RegExp(`by operator ${ACTOR_PUBLIC_ID}`));
+    expect(actor).toBeInTheDocument();
+    expect(actor.textContent).not.toContain(`#${ACTOR_PUBLIC_ID}`);
+  });
+
   it("shows the GHN rejection toast for 500 action failures", async () => {
     actionMutateMock.mockImplementation((_input, options) => {
       options?.onError?.(new ApiError("Carrier rejected the request", 500));
@@ -184,6 +247,48 @@ describe("ShipmentDetail", () => {
           kind: "error",
           title: "Cancel shipment failed",
           message: "Order cannot be cancelled",
+        }),
+      );
+    });
+  });
+
+  // RESIL-01: the new contract moves a GHN refusal from 500 to 400 and adds 503
+  // for an unreachable carrier. Both must keep GHN's own message.
+  it("shows the GHN rejection toast for a prefixed 400 action failure", async () => {
+    actionMutateMock.mockImplementation((_input, options) => {
+      options?.onError?.(
+        new ApiError("GHN cancel error: Order has been picked up", 400),
+      );
+    });
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          title: "GHN rejected the action",
+          message: expect.stringContaining("Order has been picked up"),
+        }),
+      );
+    });
+  });
+
+  it("shows a retryable outage toast when GHN is unreachable (503)", async () => {
+    actionMutateMock.mockImplementation((_input, options) => {
+      options?.onError?.(new ApiError("GHN cancel request failed", 503));
+    });
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          title: "GHN temporarily unavailable",
+          message: expect.stringContaining("retry in a moment"),
         }),
       );
     });

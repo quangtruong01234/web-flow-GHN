@@ -28,6 +28,8 @@ import type {
 } from "../api/types";
 
 export const ORDER_PUBLIC_ID = "ord_AbCdEf1234567890";
+/** History `actorId` — an opaque `usr_...` public id since GHN-HIST-01. */
+export const ACTOR_PUBLIC_ID = "usr_0000000000000002";
 export const BUYER_PUBLIC_ID = "usr_0000000000000007";
 export const SELLER_PUBLIC_ID = "usr_0000000000000009";
 export const PRODUCT_PUBLIC_ID = "prod_0000000000000011";
@@ -242,7 +244,7 @@ export function backendHistoryRow(
     id: "1",
     orderId: ORDER_PUBLIC_ID,
     type: "manual_sync",
-    actorId: 2,
+    actorId: ACTOR_PUBLIC_ID,
     action: "sync",
     previousStatus: "shipped",
     newStatus: "delivering",
@@ -422,7 +424,7 @@ export function shipmentHistoryRow(
     ghnStatus: "delivering",
     success: true,
     message: "Synced from GHN",
-    actorId: 7,
+    actorId: ACTOR_PUBLIC_ID,
     createdAt: "2026-06-27T09:30:00.000Z",
     ...overrides,
   };

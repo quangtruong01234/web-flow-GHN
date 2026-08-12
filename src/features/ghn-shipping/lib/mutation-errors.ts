@@ -14,6 +14,23 @@ function messageOf(error: unknown, fallback: string): string {
 }
 
 /**
+ * RESIL-01 (backend 2026-08-10): a GHN refusal or outage now surfaces as
+ * `"GHN <action> error: <GHN's own message>"` with status 400 (refused, not
+ * retryable) or 503 (unreachable, retry later). Branch on `statusCode`; this
+ * prefix test only picks the right *title* — a 400 can also be local validation
+ * ("order has no ghnOrderCode"), which is equally non-retryable. The message is
+ * surfaced verbatim either way, never replaced with generic copy.
+ */
+function isGhnRefusal(error: unknown): boolean {
+  return isApiError(error) && /^GHN\b.*\berror:/i.test(error.message);
+}
+
+const NOT_RETRYABLE_HINT =
+  "Retrying the same request will not help — fix the order or pick a different action.";
+const OUTAGE_HINT =
+  "GHN is not answering right now. The order was not changed; retry in a moment.";
+
+/**
  * Sync failures. The gateway distinguishes stale/unresolvable GHN waybills
  * (404, not retryable) from transient GHN outages (503, retryable), so callers
  * should not collapse both into a generic request failure.
@@ -40,6 +57,13 @@ export function syncErrorCopy(error: unknown): ErrorCopy {
     };
   }
 
+  if (error.status === 400) {
+    return {
+      title: isGhnRefusal(error) ? "GHN refused the sync" : "Sync failed",
+      message: `${error.message} ${NOT_RETRYABLE_HINT}`,
+    };
+  }
+
   return {
     title: "Sync failed",
     message: error.message,
@@ -47,15 +71,29 @@ export function syncErrorCopy(error: unknown): ErrorCopy {
 }
 
 /**
- * Cancel/return failures. A 500 carries the GHN rejection message and means
- * the local order was left unchanged (the failed attempt is still recorded in
- * the shipping history).
+ * Cancel/return failures. Either way the local order was left unchanged and the
+ * failed attempt is recorded in the shipping history:
+ * - `400` — GHN (or a local guard) refused the action. Not retryable.
+ * - `503` — GHN is unreachable or the circuit breaker is open. Retry later.
+ * - `500` — the pre-RESIL-01 shape; keep it until the backend deploy lands.
  */
 export function actionErrorCopy(error: unknown, actionLabel: string): ErrorCopy {
   const message = messageOf(
     error,
     "The action request failed. Try again in a moment.",
   );
+  if (isApiError(error) && error.status === 503) {
+    return {
+      title: "GHN temporarily unavailable",
+      message: `${message} ${OUTAGE_HINT}`,
+    };
+  }
+  if (isApiError(error) && error.status === 400 && isGhnRefusal(error)) {
+    return {
+      title: "GHN rejected the action",
+      message: `${message} The local order was not changed. ${NOT_RETRYABLE_HINT}`,
+    };
+  }
   if (isApiError(error) && error.status === 500) {
     return {
       title: "GHN rejected the action",
@@ -66,11 +104,23 @@ export function actionErrorCopy(error: unknown, actionLabel: string): ErrorCopy 
 }
 
 /**
- * COD/receiver edit failures. Same 500 semantics as actions: GHN rejected the
- * edit and the order was not changed.
+ * COD/receiver edit failures. Same 400/503/500 semantics as actions: GHN
+ * refused or was unreachable, and the order was not changed.
  */
 export function editErrorCopy(error: unknown, what: string): ErrorCopy {
   const message = messageOf(error, "The request failed. Try again in a moment.");
+  if (isApiError(error) && error.status === 503) {
+    return {
+      title: "GHN temporarily unavailable",
+      message: `${message} ${OUTAGE_HINT}`,
+    };
+  }
+  if (isApiError(error) && error.status === 400 && isGhnRefusal(error)) {
+    return {
+      title: "GHN rejected the edit",
+      message: `${message} The order was not changed. ${NOT_RETRYABLE_HINT}`,
+    };
+  }
   if (isApiError(error) && error.status === 500) {
     return {
       title: "GHN rejected the edit",

@@ -313,15 +313,21 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
   const [codOpen, setCodOpen] = useState(false);
   const [receiverOpen, setReceiverOpen] = useState(false);
 
-  const userMaySync = roleCanSync(user?.role);
-  const userMayAct = roleCanSync(user?.role);
-  const canSyncOrder = data.canSync; // order has a GHN code
+  // GHN-ACT-01: `availableActions` is the single source of truth. The gateway
+  // already trims it by permission *and* by order state, so the array encodes
+  // the role — a second role check on top only hid buttons the backend allows.
+  const canSyncOrder = data.canSync; // availableActions contains "sync"
   const liveActions = LIVE_ACTIONS.filter((item) =>
     data.availableActions.includes(item.key),
   );
   const canUpdateCod = data.availableActions.includes("update_cod");
   const canUpdateReceiver = data.availableActions.includes("update_receiver");
   const hasEditActions = canUpdateCod || canUpdateReceiver;
+  const readOnly = !canSyncOrder && liveActions.length === 0 && !hasEditActions;
+  // The demo control is NOT advertised in `availableActions` (it is a
+  // console-only affordance behind its own backend flag + grant), so it keeps a
+  // role check of its own.
+  const userMayUseDemo = roleCanSync(user?.role);
 
   const onSync = () => {
     sync.mutate(data.orderId, {
@@ -372,21 +378,26 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
     <Card>
       <CardHeader title="Action panel" subtitle="Operator workflow" />
       <div className="space-y-3 p-5">
+        {readOnly ? (
+          <p className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-xs leading-5 text-ink-500">
+            The backend lists no carrier actions for this shipment, so the panel
+            is read-only. That happens when the order state allows none, or when
+            your role has read-only access to shipments.
+          </p>
+        ) : null}
         <Button
           className="w-full justify-start"
           onClick={onSync}
-          disabled={!canSyncOrder || !userMaySync || sync.isPending}
+          disabled={!canSyncOrder || sync.isPending}
         >
           <Icon name="sync" size={16} />
           {sync.isPending ? "Syncing..." : "Sync GHN status"}
         </Button>
         {!canSyncOrder ? (
           <p className="text-xs text-ink-400">
-            No GHN order code yet — there is nothing to sync.
-          </p>
-        ) : !userMaySync ? (
-          <p className="text-xs text-ink-400">
-            Syncing requires the shipping manager role.
+            {data.ghnOrderCode
+              ? "Syncing is not available for this shipment."
+              : "No GHN order code yet — there is nothing to sync."}
           </p>
         ) : null}
 
@@ -401,7 +412,7 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
                 key={item.key}
                 variant={item.variant}
                 className="w-full justify-start"
-                disabled={!userMayAct || action.isPending}
+                disabled={action.isPending}
                 onClick={() => onAction(item.key)}
               >
                 <Icon name={item.icon} size={16} />
@@ -409,11 +420,6 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
               </Button>
             );
           })}
-          {liveActions.length > 0 && !userMayAct ? (
-            <p className="text-xs text-ink-400">
-              Carrier actions require the shipping manager role.
-            </p>
-          ) : null}
           {liveActions.length === 0 ? (
             <p className="text-xs text-ink-400">
               No carrier actions are currently available for this shipment.
@@ -427,7 +433,6 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
             <Button
               variant="secondary"
               className="w-full justify-start"
-              disabled={!userMayAct}
               onClick={() => setCodOpen(true)}
             >
               <Icon name="wallet" size={16} />
@@ -438,22 +443,16 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
             <Button
               variant="secondary"
               className="w-full justify-start"
-              disabled={!userMayAct}
               onClick={() => setReceiverOpen(true)}
             >
               <Icon name="user" size={16} />
               Update receiver info
             </Button>
           ) : null}
-          {hasEditActions && !userMayAct ? (
-            <p className="text-xs text-ink-400">
-              Waybill edits require the shipping manager role.
-            </p>
-          ) : null}
           {!hasEditActions ? (
             <p className="text-xs text-ink-400">
-              COD and receiver edits are only available before the parcel enters
-              transit.
+              COD and receiver edits are not offered for this shipment — usually
+              because the parcel has already entered transit.
             </p>
           ) : null}
         </div>
@@ -465,7 +464,7 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
         </p>
 
         {isDemoModeEnabled() && data.ghnOrderCode ? (
-          <DemoStatusControl data={data} userMayAct={userMayAct} />
+          <DemoStatusControl data={data} userMayAct={userMayUseDemo} />
         ) : null}
       </div>
 
@@ -770,7 +769,7 @@ function UpdateReceiverModal({
   );
 }
 
-/** Shared error handling for the COD/receiver edits: 500 = GHN rejected. */
+/** Shared error handling for the COD/receiver edits (400 refused / 503 outage). */
 function handleEditError(
   error: unknown,
   what: string,

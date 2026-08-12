@@ -45,7 +45,12 @@ export function isAllowedRole(role: string | undefined): boolean {
   return role !== undefined && ALLOWED_ROLES.includes(role);
 }
 
-/** A GHN sync is a status mutation, restricted to shipping managers. */
+/**
+ * Role check for the demo-status control only. Carrier actions (sync, cancel,
+ * return, COD/receiver edits) are gated by the gateway's `availableActions`
+ * array, which already encodes the role — see GHN-ACT-01. The demo endpoint has
+ * no entry in that array, so it keeps its own check.
+ */
 export function canSync(role: string | undefined): boolean {
   return role === "shipping_manager";
 }

@@ -19,6 +19,26 @@ describe("syncErrorCopy", () => {
     expect(copy.message).toContain("Try syncing again");
   });
 
+  // RESIL-01: a GHN refusal is a 400 carrying GHN's own message, and it is never
+  // retryable — the previous contract returned 500 for the same case.
+  it("names GHN as the refuser for a prefixed 400 and marks it non-retryable", () => {
+    const copy = syncErrorCopy(
+      new ApiError("GHN sync error: OrderCode is invalid", 400),
+    );
+    expect(copy.title).toBe("GHN refused the sync");
+    expect(copy.message).toContain("GHN sync error: OrderCode is invalid");
+    expect(copy.message).toContain("will not help");
+  });
+
+  it("keeps a local-guard 400 as a plain sync failure but still non-retryable", () => {
+    const copy = syncErrorCopy(
+      new ApiError("Order ord_1 has no ghnOrderCode", 400),
+    );
+    expect(copy.title).toBe("Sync failed");
+    expect(copy.message).toContain("Order ord_1 has no ghnOrderCode");
+    expect(copy.message).toContain("will not help");
+  });
+
   it("falls back to a generic failure for non-API errors", () => {
     const copy = syncErrorCopy(new Error("boom"));
     expect(copy.title).toBe("Sync failed");
@@ -37,7 +57,27 @@ describe("actionErrorCopy", () => {
     expect(copy.message).toContain("was not changed");
   });
 
-  it("uses the action label for non-500 failures", () => {
+  it("surfaces a prefixed 400 as a GHN rejection (RESIL-01 replaces the 500)", () => {
+    const copy = actionErrorCopy(
+      new ApiError("GHN cancel error: Order has been picked up", 400),
+      "Cancel waybill",
+    );
+    expect(copy.title).toBe("GHN rejected the action");
+    expect(copy.message).toContain("GHN cancel error: Order has been picked up");
+    expect(copy.message).toContain("was not changed");
+    expect(copy.message).toContain("will not help");
+  });
+
+  it("surfaces a 503 as a retryable outage, not a rejection", () => {
+    const copy = actionErrorCopy(
+      new ApiError("GHN is unreachable", 503),
+      "Cancel waybill",
+    );
+    expect(copy.title).toBe("GHN temporarily unavailable");
+    expect(copy.message).toContain("retry in a moment");
+  });
+
+  it("uses the action label for a local-guard 400 and keeps the message verbatim", () => {
     const copy = actionErrorCopy(
       new ApiError('Action "cancel" is not allowed', 400),
       "Cancel waybill",
@@ -52,6 +92,22 @@ describe("editErrorCopy", () => {
     const copy = editErrorCopy(new ApiError("GHN updateCOD error: x", 500), "COD");
     expect(copy.title).toBe("GHN rejected the edit");
     expect(copy.message).toContain("was not changed");
+  });
+
+  it("surfaces a prefixed 400 as a GHN-rejected edit", () => {
+    const copy = editErrorCopy(
+      new ApiError("GHN updateCOD error: COD exceeds the limit", 400),
+      "COD",
+    );
+    expect(copy.title).toBe("GHN rejected the edit");
+    expect(copy.message).toContain("GHN updateCOD error: COD exceeds the limit");
+    expect(copy.message).toContain("will not help");
+  });
+
+  it("surfaces a 503 edit failure as a retryable outage", () => {
+    const copy = editErrorCopy(new ApiError("GHN circuit is open", 503), "COD");
+    expect(copy.title).toBe("GHN temporarily unavailable");
+    expect(copy.message).toContain("retry in a moment");
   });
 
   it("uses the field name for validation failures", () => {

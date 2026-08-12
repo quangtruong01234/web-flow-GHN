@@ -3,15 +3,18 @@ import {
   mapOrderStatusToLocal,
   toActionView,
   toCodUpdateView,
+  toHistoryRow,
   toReceiverUpdateView,
   toShipmentDetailView,
   toShipmentListItem,
 } from "./adapters";
 import {
+  ACTOR_PUBLIC_ID,
   backendActionResult,
   backendBuyer,
   backendCodUpdateResult,
   backendDetailResponse,
+  backendHistoryRow,
   backendListItem,
   backendReceiverUpdateResult,
   backendSeller,
@@ -146,6 +149,31 @@ describe("toShipmentListItem", () => {
     expect(row.canSync).toBe(false);
     expect(row.ghnStatus).toBeNull();
     expect(row.rawGhnStatus).toBe("weird_state");
+  });
+});
+
+// GHN-HIST-01: `actorId` is an opaque `usr_...` id from the deploy onward, but
+// audit rows written before it keep their numeric id forever, so the wire type
+// stays `string | number | null` and the adapter normalises to a string.
+describe("toHistoryRow actorId", () => {
+  it("passes an opaque public id through unchanged", () => {
+    expect(toHistoryRow(backendHistoryRow()).actorId).toBe(ACTOR_PUBLIC_ID);
+  });
+
+  it("stringifies a legacy numeric actor id", () => {
+    expect(toHistoryRow(backendHistoryRow({ actorId: 26 })).actorId).toBe("26");
+  });
+
+  it("keeps a missing or blank actor as null", () => {
+    expect(toHistoryRow(backendHistoryRow({ actorId: null })).actorId).toBeNull();
+    expect(toHistoryRow(backendHistoryRow({ actorId: "  " })).actorId).toBeNull();
+  });
+
+  it("renders the backend message verbatim without parsing ids out of it", () => {
+    const row = toHistoryRow(
+      backendHistoryRow({ message: "GHN COD updated from 39 to 39" }),
+    );
+    expect(row.message).toBe("GHN COD updated from 39 to 39");
   });
 });
 

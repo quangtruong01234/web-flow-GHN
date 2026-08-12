@@ -7,6 +7,7 @@ import type { ShipmentSyncView } from "../api/types";
 import {
   authUser,
   ORDER_PUBLIC_ID,
+  shipmentListItem,
   shipmentListView,
   shipmentSyncView,
 } from "../testing/fixtures";
@@ -62,7 +63,33 @@ describe("GhnSyncPage", () => {
     } as unknown as ReturnType<typeof useSyncShipment>);
   });
 
-  it("renders syncable rows but disables sync for logistics operators", () => {
+  // GHN-ACT-01: the gateway trims `availableActions` by permission AND by order
+  // state, so `canSync` alone decides — a logistics_operator simply never gets a
+  // row, and the console must not add a second role check on top.
+  it("hides an order the backend does not offer the sync action for", () => {
+    useAuthMock.mockReturnValue({
+      user: authUser("logistics_operator"),
+      ready: true,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
+    useShipmentListMock.mockReturnValue({
+      data: shipmentListView({
+        items: [shipmentListItem({ canSync: false, availableActions: ["read", "history"] })],
+      }),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentList>);
+
+    render(<GhnSyncPage />);
+
+    expect(screen.queryByRole("button", { name: "Sync" })).not.toBeInTheDocument();
+    expect(screen.getByText("No syncable orders")).toBeInTheDocument();
+    expect(screen.getByText(/no order currently offers the sync action/i)).toBeInTheDocument();
+  });
+
+  it("enables sync from the action array alone, whatever the role reads", () => {
     useAuthMock.mockReturnValue({
       user: authUser("logistics_operator"),
       ready: true,
@@ -73,8 +100,7 @@ describe("GhnSyncPage", () => {
     render(<GhnSyncPage />);
 
     expect(screen.getByText(`#${ORDER_PUBLIC_ID}`)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sync" })).toBeDisabled();
-    expect(screen.getByText(/syncing requires the shipping manager role/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sync" })).toBeEnabled();
   });
 
   it("lets shipping managers sync an eligible shipment", async () => {
