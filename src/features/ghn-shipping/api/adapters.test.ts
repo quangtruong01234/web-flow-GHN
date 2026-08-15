@@ -52,6 +52,8 @@ describe("mapGhnStatus", () => {
     expect(mapGhnStatus("picked")).toBe("picking");
     expect(mapGhnStatus("transporting")).toBe("delivering");
     expect(mapGhnStatus("money_collect_delivering")).toBe("delivering");
+    // Both COD-collection legs, one before the parcel moves and one at the door.
+    expect(mapGhnStatus("money_collect_picking")).toBe("picking");
     expect(mapGhnStatus("return")).toBe("waiting_to_return");
     expect(mapGhnStatus("return_transporting")).toBe("waiting_to_return");
     expect(mapGhnStatus("return_sorting")).toBe("waiting_to_return");

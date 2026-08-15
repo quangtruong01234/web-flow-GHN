@@ -1,7 +1,9 @@
 import {
+  ATTENTION_GHN_META,
   UNKNOWN_GHN_META,
   ghnStatusDistribution,
   rawGhnLabel,
+  rawGhnMeta,
 } from "./shipment-status";
 
 describe("rawGhnLabel", () => {
@@ -13,6 +15,22 @@ describe("rawGhnLabel", () => {
   it("falls back to the neutral label when empty", () => {
     expect(rawGhnLabel(null)).toBe(UNKNOWN_GHN_META.label);
     expect(rawGhnLabel(undefined)).toBe(UNKNOWN_GHN_META.label);
+  });
+});
+
+describe("rawGhnMeta", () => {
+  // GHN-FAIL-01: the backend leaves these three without a local status on
+  // purpose, so the pill is the only place an operator can notice them.
+  it("flags the statuses that need an operator", () => {
+    for (const raw of ["exception", "damage", "lost", "  LOST  "]) {
+      expect(rawGhnMeta(raw)).toBe(ATTENTION_GHN_META);
+    }
+  });
+
+  it("stays neutral for an in-transit leg or an absent status", () => {
+    expect(rawGhnMeta("money_collect_picking")).toBe(UNKNOWN_GHN_META);
+    expect(rawGhnMeta(null)).toBe(UNKNOWN_GHN_META);
+    expect(rawGhnMeta(undefined)).toBe(UNKNOWN_GHN_META);
   });
 });
 

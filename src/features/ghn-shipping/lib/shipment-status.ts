@@ -140,6 +140,32 @@ export const UNKNOWN_GHN_META: StatusMeta = {
   label: "No GHN status",
 };
 
+/**
+ * GHN statuses the backend recognises but deliberately leaves without a local
+ * status because they need a human/compensation decision — mapping them would
+ * restock goods that no longer physically exist (GHN-FAIL-01; backend
+ * `GHN_STATUSES_WITHOUT_LOCAL_STATUS`). They are intentionally *not* `GhnStatus`
+ * values: the console must never invent a status the backend does not send as an
+ * order's state. They only need to stop rendering like "No GHN status", so the
+ * operator can see there is something to act on.
+ */
+const ATTENTION_GHN_STATUSES = new Set(["exception", "damage", "lost"]);
+
+export const ATTENTION_GHN_META: StatusMeta = {
+  badgeClass: "bg-red-100 text-red-800",
+  dotClass: "bg-red-600",
+  barClass: "bg-red-600",
+  label: "Needs attention",
+};
+
+/** Pill styling for a raw GHN status the `GhnStatus` union does not cover. */
+export function rawGhnMeta(raw: string | null | undefined): StatusMeta {
+  if (!raw) return UNKNOWN_GHN_META;
+  return ATTENTION_GHN_STATUSES.has(raw.trim().toLowerCase())
+    ? ATTENTION_GHN_META
+    : UNKNOWN_GHN_META;
+}
+
 /** Human label for a raw GHN status string (e.g. "money_collect_picking"). */
 export function rawGhnLabel(raw: string | null | undefined): string {
   if (!raw) return UNKNOWN_GHN_META.label;

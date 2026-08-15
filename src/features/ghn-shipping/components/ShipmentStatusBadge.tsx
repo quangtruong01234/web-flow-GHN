@@ -3,13 +3,16 @@ import {
   ghnMeta,
   localMeta,
   rawGhnLabel,
+  rawGhnMeta,
   UNKNOWN_GHN_META,
 } from "../lib/shipment-status";
 import type { GhnStatus, LocalStatus } from "../types";
 
 /**
- * GHN status pill. When the status is unmapped/absent, render a neutral pill
- * with the raw GHN string (we never fabricate a known status the backend didn't send).
+ * GHN status pill. When the status is unmapped/absent, render the raw GHN string
+ * (we never fabricate a known status the backend didn't send) — neutral for an
+ * in-transit leg, red for the ones that need an operator (`exception`, `damage`,
+ * `lost`), which the backend deliberately leaves without a local status.
  */
 export function GhnStatusBadge({
   status,
@@ -21,7 +24,7 @@ export function GhnStatusBadge({
   if (!status) {
     return (
       <StatusBadge
-        meta={UNKNOWN_GHN_META}
+        meta={rawGhnMeta(raw)}
         label={raw ? rawGhnLabel(raw) : UNKNOWN_GHN_META.label}
       />
     );

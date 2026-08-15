@@ -62,6 +62,9 @@ const GHN_STATUS_ALIASES: Record<string, GhnStatus> = {
   picked: "picking",
   storing: "picking",
   sorting: "picking",
+  // Sibling of `money_collect_delivering` below: both are COD-collection legs,
+  // one before the parcel moves and one at the door (GHN-FAIL-01).
+  money_collect_picking: "picking",
   transporting: "delivering",
   delivering: "delivering",
   money_collect_delivering: "delivering",
