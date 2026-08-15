@@ -1,7 +1,8 @@
 # Known Risks & Gaps
 
-Living list of current risks, gaps, and recently resolved items. Update this when a risk is
-resolved or a new one appears.
+Living list of current risks and gaps. Item numbers are **stable** — other docs cite them
+(`.ai/project.md` cites 6, 14 and 19), so never renumber. Resolved items are compacted into
+the closing section: one line each, kept only for the rule they encode.
 
 > Also check `../.agent-local/frontend-handoff-ghn.md` (backend → GHN console inbox,
 > machine-local at the `MCR/` root — never commit it): **Open** entries there are
@@ -10,38 +11,7 @@ resolved or a new one appears.
 
 Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/area.**
 
-## 1. Mock auth stored in `sessionStorage` - RESOLVED (2026-06-28)
-
-- **Risk:** Historical mock provider wrote demo identity state to `sessionStorage`.
-- **Impact:** Resolved. The real session is an HttpOnly cookie and the browser stores no
-  user identity, role hint, JWT, or session token.
-- **Current status:** `AuthContext` uses `login` / `me` / `logout`; `/me` hydrates reloads.
-- **Owner/area:** Frontend auth - done.
-
-## 2. Login field mismatch - RESOLVED (2026-06-28)
-
-- **Risk:** Historical mock login used email while the backend requires `username`.
-- **Impact:** Resolved. `GhnLoginCard` collects username and `authApi.login` sends
-  `{ username, password }`.
-- **Current status:** Gateway auth is wired.
-- **Owner/area:** Frontend auth - done.
-
-## 3. `GET /api/user/me` did not return `role` - RESOLVED (2026-06-28)
-
-- **Risk:** Historical `/me` response omitted role, so route guarding could not rehydrate
-  correctly after reload.
-- **Impact:** Resolved. Backend now returns role with the same shape as login.
-- **Current status:** FE treats `/me` as authoritative and removed browser role caching.
-- **Owner/area:** Backend + frontend auth - done.
-
-## 4. Logistics roles did not exist in backend RBAC - RESOLVED (2026-06-28)
-
-- **Risk:** Historical backend only had generic roles for shipping grants.
-- **Impact:** Resolved. Backend has `logistics_operator` and `shipping_manager` roles and
-  test accounts for this console.
-- **Current status:** FE gates protected routes with `ALLOWED_ROLES`; carrier actions are
-  gated by backend `availableActions` alone (see item 14).
-- **Owner/area:** Backend RBAC + frontend auth - done.
+## Open
 
 ## 5. `shipper` role must not be created
 
@@ -52,53 +22,15 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
 - **Suggested fix:** Use `logistics_operator` / `shipping_manager` only.
 - **Owner/area:** Backend RBAC + frontend auth.
 
-## 6. GHN -> local status mapping is incomplete
-
-- **Risk:** Backend status mapping may not cover every GHN status used by the console/demo,
-  such as `ready_to_pick`, `delivery_fail`, `waiting_to_return`, `returned`, `cancelled`.
-- **Impact:** Buyer-visible local order status may not reflect all GHN states end-to-end.
-- **Current status:** Known backend gap; not a frontend wiring blocker.
-- **Suggested fix:** Extend backend `mapGhnStatus` to cover remaining GHN statuses.
-- **Owner/area:** Backend orders service. See `.ai/context/domain.md`.
-
-## 7. CORS / GHN app origin - RESOLVED (2026-06-28)
-
-- **Risk:** Historical credentialed requests from `http://localhost:3013` could be blocked
-  if the gateway CORS list omitted this app.
-- **Impact:** Resolved for the current local flow. The app also defaults to same-origin
-  `/api` rewrites, keeping cookies first-party during Next dev.
-- **Current status:** Auth and GHN gateway calls are wired against the dev origin/proxy.
-- **Owner/area:** Backend env / frontend dev proxy - done.
-
 ## 8. Port 3002 conflict
 
 - **Risk:** `3002` is used by backend inventory services.
 - **Impact:** Using 3002 for this app conflicts when the full backend runs.
 - **Current status:** Avoided. This app runs on **3013**.
 - **Suggested fix:** Keep dev port 3013. Never hardcode 3002; never kill a process to free a
-  port.
+  port. (Restarting *this app's own* dev server after `next build` wiped its `.next` is the
+  one exception - see `.ai/context/testing.md`.)
 - **Owner/area:** Frontend dev config.
-
-## 9. Shipment list/detail/history/sync/action mock paths - RESOLVED (2026-06-28)
-
-- **Risk:** Historical screens and action panels read mock data from `mockShipments` +
-  `ShipmentContext`.
-- **Impact:** Resolved for list/detail/history/manual sync/cancel/return.
-- **Current status:** Those screens now use gateway endpoints through `shipmentsApi` +
-  `useShipments` Query hooks. The legacy mock context, data, action panel, and modal were
-  removed.
-- **Owner/area:** Frontend shipment wiring - done.
-
-## 10. Remaining GHN action endpoints beyond sync/cancel/return - RESOLVED (2026-06-30)
-
-- **Risk:** Historical gateway routes did not expose update-COD/update-receiver actions or
-  a demo-status endpoint for this app.
-- **Impact:** Resolved. COD/receiver edits and demo-status now go through backend gateway
-  mutations; no GHN direct call exists in the frontend.
-- **Current status:** Cancel, return, update COD, update receiver info, and demo-status are
-  wired. Delivery-again remains intentionally unavailable because GHN drives redelivery
-  internally.
-- **Owner/area:** Backend gateway + frontend actions - done.
 
 ## 11. `support.js` must never be imported
 
@@ -122,84 +54,6 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
   environments; leave both off in production.
 - **Owner/area:** Frontend env + backend env.
 
-## 13. GHN console exposed numeric database ids - RESOLVED (2026-07-17)
-
-- **Risk:** GHN console auth and shipment contracts historically assumed numeric user,
-  order, and product database keys.
-- **Impact:** Resolved. URLs, query keys, gateway calls, mutations, response adapters, and
-  test fixtures now preserve opaque `usr_...`, `ord_...`, and `prod_...` ids.
-- **Current status:** Malformed shipment route ids are rejected locally; legacy deleted
-  products remain supported through `productId: string | null` without erasing valid
-  checkout-time product snapshots. Runtime-verified against the live gateway on
-  2026-07-17 (list/detail/history as `logistics_test`): wire ids match the declared
-  contracts. A backend gap surfaced (`GET /admin/ghn/orders/:id/history` leaked the
-  numeric order PK in `orderId`), was recorded in `backend-handoff.md`, fixed by the
-  backend the same day, and re-verified live: history rows now return the `ord_...`
-  public id.
-- **Suggested fix:** Keep public ids opaque and never parse, numerically sort, or compare
-  them with internal database keys.
-- **Owner/area:** Frontend auth + shipment contracts - done.
-
-## 14. Client-side role checks duplicated backend action gating - RESOLVED (2026-08-12)
-
-- **Risk:** The console gated carrier actions on `canSync(role)` *in addition to* the
-  gateway's `availableActions` array, so a role the gateway had authorised still saw
-  disabled buttons and read-only notices.
-- **Impact:** Resolved. `availableActions` is now the single source of truth on
-  `/shipments/:id` and `/sync`; the gateway already filters it by permission **and** by
-  order state, so a second client-side check could only be wrong.
-- **Current status:** No carrier action reads the role. `canSync()` survives only for the
-  demo-status control, which has no `availableActions` entry. Runtime-verified on
-  2026-08-12: `logistics_operator` receives `["read","history"]` and gets the read-only
-  panel; `shipping_manager` receives exactly the actions the order's state allows and the
-  panel renders exactly those.
-- **Suggested fix:** When a new action appears, add it to the array mapping - never add a
-  role branch beside it.
-- **Owner/area:** Frontend shipment actions - done.
-
-## 15. Analytics revenue must be hidden, not zeroed, for `logistics_operator` - RESOLVED (2026-08-12)
-
-- **Risk:** `GET /api/order/admin/analytics` answers 200 for `logistics_operator` but
-  **omits** `summary.totalRevenue`, `summary.averageOrderValue`,
-  `revenueOverTime[].revenue`, and `topProducts[].revenue`. Coercing an absent field to `0`
-  would render "earned nothing" as fact.
-- **Impact:** Resolved. `toAnalyticsView` maps the absent fields to `null` and exposes
-  `revenueVisible`; `AnalyticsPanel` hides the revenue KPIs, plots `orderCount` instead of
-  `revenue`, and ranks top products by quantity sold.
-- **Current status:** The branch is on the field, never on the role, so it stays correct if
-  the backend moves the grant. Covered by `api/analytics.test.ts` and
-  `components/AnalyticsPanel.test.tsx` (including a "never print a zero" assertion).
-- **Suggested fix:** Any future money field follows the same rule - nullable in the view
-  model, hidden when null.
-- **Owner/area:** Frontend analytics - done.
-
-## 16. GHN filter enums now 400 instead of an empty 200 - RESOLVED (2026-08-12)
-
-- **Risk:** `?status=` / `?ghnStatus=` with a bogus **or empty** value is a `400` naming the
-  accepted set. A cleared filter sent as an empty string breaks the list.
-- **Impact:** Resolved. The query builder omits a cleared key, the GHN-status dropdown is
-  generated from the 23 accepted values, and a `400` renders verbatim with no Retry button
-  (the same request can never succeed).
-- **Current status:** The two vocabularies are kept apart: GHN accepts both `cancel` and
-  `cancelled`, while the local status is `canceled`. Each value goes to its own param with
-  no normalisation.
-- **Suggested fix:** Never map a console-local label onto either param; add new values to
-  `GHN_STATUS_FILTER_VALUES` only after the backend accepts them.
-- **Owner/area:** Frontend shipment list - done.
-
-## 17. GHN failures split across 400 (refusal) and 503 (outage) - RESOLVED (2026-08-12)
-
-- **Risk:** A GHN refusal is a `400` whose message is `"GHN <action> error: <reason>"` and
-  retrying cannot help; an outage/timeout/open circuit is a `503` where retrying is the
-  right advice. Collapsing both into one banner tells the operator the wrong thing.
-- **Impact:** Resolved. `lib/mutation-errors.ts` branches on `statusCode` and surfaces the
-  GHN reason verbatim; `400` gets "retrying will not help", `503` gets retry-later copy.
-- **Current status:** A local-guard `400` (e.g. "action not allowed for status") keeps its
-  own copy and is also shown verbatim. The envelope's `error` field still reads
-  `"HttpException"` for microservice-propagated errors, so nothing branches on it.
-- **Suggested fix:** Keep branching on `statusCode`; do not pattern-match `error`.
-- **Owner/area:** Frontend mutation error states - done.
-
 ## 18. `ghnDetail.raw` is a backend allow-list
 
 - **Risk:** `raw` passes through a backend allow-list (~43 keys). Anything outside it -
@@ -211,3 +65,65 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
 - **Suggested fix:** Do not start reading `raw.<key>`. If a GHN field is genuinely needed,
   ask the backend to allow-list it rather than parsing a substitute.
 - **Owner/area:** Frontend shipment detail.
+
+## Resolved
+
+Compacted 2026-08-16. Each line keeps the **rule** the item left behind; the full history
+is in `handoff/CHANGELOG.md` under the matching date.
+
+1. **Mock auth in `sessionStorage`** - RESOLVED 2026-06-28. The session is an HttpOnly
+   cookie; never store identity, role hint, or token in the browser.
+2. **Login field mismatch** - RESOLVED 2026-06-28. Auth is `{ username, password }`, not
+   email.
+3. **`/me` did not return `role`** - RESOLVED 2026-06-28. `/me` is authoritative on reload;
+   do not cache the role client-side.
+4. **Logistics roles missing in backend RBAC** - RESOLVED 2026-06-28. `logistics_operator`
+   and `shipping_manager` exist; routes gate on `ALLOWED_ROLES`, carrier actions do not
+   (see 14).
+6. **GHN -> local status mapping looked incomplete** - RESOLVED 2026-08-16 (GHN-FAIL-01).
+   Backend confirmed it is intended, not a gap: ten GHN statuses deliberately have **no** local
+   equivalent, because mapping them would be wrong. `delivery_fail` is a failed *attempt* - GHN
+   retries before moving to the return family - so canceling on the first miss would release
+   stock for a parcel still out for redelivery; `exception`/`damage`/`lost` need a human
+   decision, and restocking goods that no longer exist is worse than waiting. The order simply
+   keeps its current local status. Never derive a local status on the client to "fill in" one of
+   these; surface them from the **GHN badge** instead (`rawGhnMeta` reds the three that need an
+   operator). History rows for these now read "acknowledged; no local equivalent" - the old
+   "Unhandled GHN status" wording survives only on rows written before 2026-08-16 and on
+   genuinely unknown statuses, so never match that string to infer anything.
+7. **CORS / GHN app origin** - RESOLVED 2026-06-28. Dev calls go through the same-origin
+   `/api` rewrite so cookies stay first-party; prod names the Vercel origin explicitly and
+   the cookie is `SameSite=None; Secure` (backend handoff 2026-08-10). Vercel *preview*
+   URLs are still CORS-rejected by design - test on the production URL.
+9. **Mock shipment data paths** - RESOLVED 2026-06-28. List/detail/history/sync/actions all
+   go through the gateway; the mock context and fixtures were deleted.
+10. **Missing action endpoints** - RESOLVED 2026-06-30. Cancel, return, update COD, update
+    receiver, demo-status are wired. Delivery-again stays unavailable - GHN drives
+    redelivery internally.
+13. **Numeric database ids leaked into the console** - RESOLVED 2026-07-17. Public ids
+    (`usr_`, `ord_`, `prod_`) are opaque: never parse, numerically sort, or compare them
+    with internal keys. Shipment routes validate `^ord_[A-Za-z0-9]{16}$` locally.
+14. **Client-side role checks duplicated backend action gating** - RESOLVED 2026-08-12.
+    `availableActions` is the single source of truth for carrier actions (the gateway
+    filters it by permission **and** order state). When a new action appears, add it to the
+    array mapping - never add a role branch beside it. `canSync()` survives only for the
+    demo-status control, which has no entry in the array.
+15. **Analytics revenue must be hidden, not zeroed** - RESOLVED 2026-08-12. Money fields are
+    *absent* for `logistics_operator`, so the view model maps them to `null` and the UI
+    hides them. Branch on the field, never on the role; a `0` would read as "earned
+    nothing". Applies to every future money field (see 20).
+16. **GHN filter enums now 400 instead of an empty 200** - RESOLVED 2026-08-12. Omit a
+    cleared filter key instead of sending `""`. The two vocabularies stay apart: GHN accepts
+    `cancel` and `cancelled`, the local status is `canceled`; never normalise across them.
+17. **GHN failures split across 400 and 503** - RESOLVED 2026-08-12. Branch on `statusCode`
+    (400 = refusal, retrying will not help; 503 = outage, retry later) and surface GHN's
+    message verbatim. Never pattern-match the envelope's `error` field.
+19. **Analytics `topProducts[].productId` keyed React rows** - RESOLVED 2026-08-16
+    (IDLEAK-02). The id is opaque and nullable, so it can never key a list row on its own -
+    `AnalyticsPanel` falls back to the row index. The wire type stays
+    `string | number | null` so a console deployed ahead of the backend still reads the
+    legacy numeric id. Runtime-verified against the dev gateway with two `null` rows.
+20. **"Top products" claimed a revenue ranking** - RESOLVED 2026-08-16. The backend sorts
+    that list `ORDER BY quantitySold DESC` for every role, so the caption is always "By
+    quantity sold"; revenue is an extra column, never the sort key. A missing per-row
+    revenue renders as `—`, following 15.

@@ -10,6 +10,109 @@ context if relevant).
 
 ---
 
+### 2026-08-16 — GHN-FAIL-01: `delivery_fail` has no local status **on purpose**
+
+The sweep filed the unmapped `delivery_fail` as a suspected backend gap
+(`../.agent-local/backend-handoff.md`). The backend answered with decision **(b) — intended,
+not a gap** — and the answer was verified in `api/` source rather than taken on its label.
+Closes risks item **6** (moved to §Resolved, number kept).
+
+- **Why it is not a gap.** `mapGhnStatus` (`orders.service.ts:2699`) still returns `null` for
+  `delivery_fail`, now against a named constant `GHN_STATUSES_WITHOUT_LOCAL_STATUS`
+  (`libs/constant/shipping.constant.ts`) listing ten statuses with a per-status reason.
+  `delivery_fail` is a failed *attempt*: GHN retries before moving to the return family
+  (which already maps to `canceled`), so canceling on the first miss would release stock for a
+  parcel still out for redelivery → oversell. `exception` / `damage` / `lost` need a human
+  decision, and restocking goods that no longer physically exist is worse than waiting. The
+  order simply keeps its current local status.
+- **Contract unchanged; release class A.** Only the `shipping_history.message` wording moved:
+  recognised-but-unmapped statuses now read `... acknowledged; no local equivalent, order stays
+  <status>`, while genuinely unknown ones keep `Unhandled GHN status "<x>"`. Forward-only —
+  rows written before 2026-08-16 keep the old wording, so **never string-match "Unhandled"** to
+  infer anything on the client.
+- **Two console-side gaps the answer exposed** (backend asked for no FE work; these are ours):
+  - `money_collect_picking` was missing from `GHN_STATUS_ALIASES` while its sibling
+    `money_collect_delivering` was present, so the COD-collection leg at pickup fell through to
+    a grey "unmapped" pill instead of **Picking**. Added in `api/adapters.ts`.
+  - `exception` / `damage` / `lost` rendered in the *same* neutral grey pill as "No GHN
+    status" — indistinguishable from an order with no waybill yet, which is exactly backwards
+    for the three statuses that need an operator. New `ATTENTION_GHN_META` / `rawGhnMeta()` in
+    `lib/shipment-status.ts`, wired into `GhnStatusBadge`, reds them. They are deliberately
+    **not** added to the `GhnStatus` union — the console must never present a status the
+    backend does not send as an order's state; only the colour changes.
+- **Tests:** three new cases — `rawGhnMeta` flags the three attention statuses (case- and
+  whitespace-insensitive) and stays neutral for an in-transit leg / `null` / `undefined`;
+  `mapGhnStatus("money_collect_picking")` → `picking`.
+- **Verified:** lint clean, `tsc --noEmit` 0, `next build` 0, Jest **92/92 in 13 suites**. The
+  red pill is covered by unit tests and a clean build only — it was **not** browser-verified,
+  because `DEMO_GHN_STATUSES` exposes just the 8 canonical statuses and cannot drive an order
+  into `exception` / `damage` / `lost`.
+
+---
+
+### 2026-08-16 — "Top products" caption claimed a ranking the backend does not produce
+
+Backlog sweep follow-up: audited both backlog sources, closed everything already fixed, and
+fixed the one real bug the audit turned up. Risks item **20**.
+
+- **The caption was wrong, not the data.** `AnalyticsPanel > TopProducts` captioned the list
+  "By revenue, completed orders" whenever the Revenue column was visible. The orders service
+  builds that list with `.orderBy("quantitySold", "DESC")` for every role
+  (`api/apps/orders/src/orders.service.ts`), so revenue is an extra column, never the sort
+  key. The live dev gateway proves it: a row worth 238 VND (qty 2) outranks two rows worth
+  12.000 VND (qty 1). The caption is now "By quantity sold, completed orders" in both roles,
+  with a comment recording why it must not follow the money column.
+- **A missing per-row revenue is a dash.** `product.revenue === null` renders `—` instead of
+  falling through `fmtVND` to `0 VND`, matching the GHN-RBAC-01 rule that an absent figure is
+  never a zero (risks item 15).
+- **Tests:** two new cases in `components/AnalyticsPanel.test.tsx` — the caption reads "By
+  quantity sold" and never "By revenue" in both the revenue-visible and revenue-hidden roles;
+  a `null` revenue renders `—` and never `0 VND`.
+- **Backlog compaction.** `.ai/context/risks.md` rewritten: six genuinely open items (5, 6, 8,
+  11, 12, 18) kept verbatim, thirteen resolved ones compacted to one line each keeping only
+  the rule they encode. **Item numbers are stable and must never be renumbered** —
+  `.ai/project.md` cites 14 and 19. The six remaining **Open** entries in
+  `../.agent-local/frontend-handoff-ghn.md` were re-verified against current code (not their
+  labels) and all moved to **Done**; that inbox is now empty.
+- **Gotcha documented.** `.ai/context/testing.md`: `next build` clobbers a running `next dev`
+  (shared `.next`), leaving the browser with chunk `404`s and a page frozen mid-render. It
+  looks exactly like an app bug — it is not. Restarting this app's own dev server is the one
+  sanctioned exception to risks item 8's "never kill a process to free a port".
+- **Verification (2026-08-16):** `npm.cmd run lint` clean, `npx.cmd tsc --noEmit` exit 0,
+  `npm.cmd run build` exit 0 (11 routes), Jest **90/90 in 13 suites** (was 88).
+  Runtime-verified as `shipmgr_test` on `http://localhost:3013/dashboard`: the caption reads
+  "By quantity sold, completed orders" with the Revenue column intact, and the console is
+  clean.
+
+### 2026-08-16 — IDLEAK-02: analytics `topProducts[].productId` is an opaque public id
+
+Integrated the last release-blocking entry in `../.agent-local/frontend-handoff-ghn.md`.
+`GET /api/order/admin/analytics` now returns `topProducts[].productId` as `prod_…` or
+`null` (product deleted, or the product service is down — the whole list comes back `null`
+rather than 500) instead of the numeric PK. This unblocks the backend push
+(`release-gate.md`, IDLEAK-02 `web-flow-GHN` cell → ✅; that was the last `⏳` on the entry).
+
+- **Wire type accepts both, view model normalises.** `BackendAnalyticsResponse` declares
+  `productId: string | number | null` so a console deployed ahead of the backend still reads
+  the legacy numeric id; `normalizeProductId` stringifies it and keeps an unresolved product
+  as `null` rather than the string `"null"`. Same shape as the `actorId` handling from
+  GHN-HIST-01. `AnalyticsTopProduct.productId` is `string | null`.
+- **The React key no longer collides.** `TopProducts` keyed its rows on `productId` alone;
+  with several deleted products in the window every one of those keys was `null`, so React
+  warned and reconciled the wrong rows. Rows now fall back to the list index
+  (`product.productId ?? \`unresolved-${index}\``) — the ranking is fixed, with no reorder or
+  insert, so the index is stable. This is what made the item class C.
+- **Tests:** `api/analytics.test.ts` covers all three wire shapes (opaque id passthrough,
+  two `null` rows staying `null`, legacy numeric id stringified) and its fixture now carries
+  a `prod_…` id; `components/AnalyticsPanel.test.tsx` renders three top products of which two
+  have `productId: null` and asserts every name appears with no `console.error`.
+- **Verification (2026-08-16):** `npm.cmd run lint` clean, `npx.cmd tsc --noEmit` exit 0,
+  `npm.cmd run build` exit 0, Jest **88/88 in 13 suites** (was 84). Runtime-verified against
+  the live dev gateway as `shipmgr_test` on `http://localhost:3013/dashboard`: the endpoint
+  already serves the new contract (`["prod_ffc7fc2281d211f1", null, null,
+  "prod_ffc7fb1381d211f1"]`), and all four rows render — including both `null`-id products —
+  with no React key warning and an empty console.
+
 ### 2026-08-12 — BATCH-0812: backend action/RBAC/enum/error contracts integrated
 
 Integrated the five release-blocking items from `../.agent-local/frontend-handoff-ghn.md`

@@ -39,6 +39,16 @@ available because GHN drives redelivery internally.
 Do not collapse these into one field, and do not derive `LocalStatus` from `GhnStatus` on
 the client as if it were authoritative.
 
+**Some GHN statuses have no local status, by design (GHN-FAIL-01).** The backend keeps ten
+of them — `delivery_fail`, `exception`, `damage`, `lost`, and the COD/`storing` legs among
+them — deliberately unmapped: `delivery_fail` is a failed *attempt* that GHN retries before
+moving to the return family, and canceling on the first miss would release stock for a parcel
+still out for redelivery. The order simply keeps its current `LocalStatus`. This is not a gap
+to fill in on the client. `exception` / `damage` / `lost` do need an operator, so they render
+as a **red GHN pill** through `rawGhnMeta()` — colour only; they are not `GhnStatus` values.
+Their history rows read "acknowledged; no local equivalent", but the older "Unhandled GHN
+status" wording survives on rows written before 2026-08-16 — never string-match either.
+
 ## Core entities
 
 - Gateway list/detail/history/sync/action view models live in

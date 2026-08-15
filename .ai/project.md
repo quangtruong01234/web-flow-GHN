@@ -50,8 +50,18 @@ Treat every rule in those files as active project guidance.
   `/dashboard` (`AnalyticsPanel`): summary KPIs, revenue over time, status distribution,
   top products. Readable by `logistics_operator` — do not gate it behind
   `shipping_manager`.
+- Backend contract **IDLEAK-02** is integrated: analytics `topProducts[].productId` is an
+  opaque `prod_...` id, `null` when the product does not resolve, and still accepted as a
+  legacy number on the wire. It must never key a list row on its own — `AnalyticsPanel`
+  falls back to the row index. See `handoff/CHANGELOG.md` 2026-08-16 and risks.md item 19.
+- Backend decision **GHN-FAIL-01**: ten GHN statuses (`delivery_fail`, `exception`, `damage`,
+  `lost`, …) deliberately have **no** local status — the order keeps its current one. Never
+  derive a local status on the client to fill the gap, and never string-match the history
+  message `Unhandled GHN status` (forward-only wording change). `exception`/`damage`/`lost`
+  surface as a red GHN pill via `rawGhnMeta()`. See `handoff/CHANGELOG.md` 2026-08-16 and
+  risks.md item 6.
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 84 tests / 13 suites), `npx.cmd playwright test` (10 specs).
+  `npm.cmd test` (Jest, 92 tests / 13 suites), `npx.cmd playwright test` (10 specs).
 
 ## Next task order
 

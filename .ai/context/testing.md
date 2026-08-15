@@ -57,6 +57,15 @@ npm.cmd run build
 
 Never mark work done with lint, build, TypeScript, or Jest errors.
 
+**`next build` clobbers a running `next dev`.** They share `.next`, so a build run while the
+dev server is serving leaves that server pointing at chunks it no longer has on disk: the
+browser gets `404` + "Refused to execute script … MIME type ('text/plain')" for
+`main-app.js` and friends, and the page hangs on whatever was last rendered — a button stuck
+on "Signing in…", `AuthGate` stuck on "Checking your session…". It looks exactly like an app
+bug and is not one. Touching a source file does **not** recover it. Either build before you
+open the browser, or restart the dev server afterwards (the one case where stopping the
+process on 3013 is correct — see risks.md item 8).
+
 ## CI
 
 `.github/workflows/ci.yml` re-runs the same checks on every push to `main` and every PR:
