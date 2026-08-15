@@ -343,10 +343,15 @@ function TopProducts({
     <div className="rounded-lg border border-line">
       <div className="border-b border-line px-4 py-3">
         <p className="text-[13px] font-semibold text-ink-900">Top products</p>
+        {/*
+          The backend ranks this list with `ORDER BY quantitySold DESC` for every
+          role (orders service `getAnalytics`), so the caption must not claim a
+          revenue ranking when the money column happens to be visible — a row
+          worth 238 VND legitimately outranks one worth 12.000 VND. Revenue is an
+          extra column here, never the sort key.
+        */}
         <p className="mt-0.5 text-xs text-ink-500">
-          {showRevenue
-            ? "By revenue, completed orders"
-            : "By quantity sold, completed orders"}
+          By quantity sold, completed orders
         </p>
       </div>
       {products.length === 0 ? (
@@ -365,8 +370,14 @@ function TopProducts({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {products.map((product) => (
-              <tr key={product.productId}>
+            {/*
+              IDLEAK-02: `productId` is `null` for every product the backend
+              cannot resolve, so it cannot key the row on its own — two deleted
+              products would collide. The list is a fixed ranking with no
+              reorder or insert, so the index is a safe fallback.
+            */}
+            {products.map((product, index) => (
+              <tr key={product.productId ?? `unresolved-${index}`}>
                 <td className="max-w-0 truncate px-4 py-2.5 font-medium text-ink-900">
                   {product.name}
                 </td>
@@ -375,7 +386,8 @@ function TopProducts({
                 </td>
                 {showRevenue ? (
                   <td className="px-4 py-2.5 text-right text-ink-700">
-                    {fmtVND(product.revenue ?? 0)}
+                    {/* GHN-RBAC-01: an absent figure is a dash, never a zero. */}
+                    {product.revenue === null ? "—" : fmtVND(product.revenue)}
                   </td>
                 ) : null}
               </tr>

@@ -73,7 +73,14 @@ export interface BackendAnalyticsResponse {
   }>;
   statusDistribution: Record<AnalyticsStatusKey, number>;
   topProducts: Array<{
-    productId: number;
+    /**
+     * IDLEAK-02 (backend handoff 2026-08-15): an opaque `prod_...` public id, or
+     * `null` when the product no longer resolves (deleted, or the product
+     * service is down — the whole list comes back `null` rather than 500). A
+     * deploy of this console ahead of the backend still sees the legacy numeric
+     * id, so accept both on the wire and normalise in the view model.
+     */
+    productId: string | number | null;
     productName: string;
     quantitySold: number;
     /** Absent for roles without revenue visibility (GHN-RBAC-01). */
@@ -100,7 +107,12 @@ export interface AnalyticsStatusRow {
 }
 
 export interface AnalyticsTopProduct {
-  productId: number;
+  /**
+   * Opaque product reference (`prod_...`), or `null` when the backend could not
+   * resolve the product. Never parse it, and never use it alone as a React key —
+   * several rows can be `null` at once.
+   */
+  productId: string | null;
   name: string;
   quantitySold: number;
   /** `null` when the backend omitted revenue for this role. */
@@ -146,6 +158,17 @@ const ANALYTICS_STATUS_META: Record<
   refunded: { label: "Refunded", barClass: "bg-violet-600" },
 };
 
+/**
+ * IDLEAK-02: normalise `topProducts[].productId` to an opaque string, keeping a
+ * pre-deploy numeric id working. An unresolved product stays `null` — it must
+ * not be coerced into a `"null"` string that would look like a real reference.
+ */
+function normalizeProductId(productId: string | number | null): string | null {
+  if (productId === null || productId === undefined) return null;
+  const value = String(productId).trim();
+  return value === "" ? null : value;
+}
+
 export function toAnalyticsView(res: BackendAnalyticsResponse): AnalyticsView {
   return {
     from: res.from,
@@ -170,7 +193,7 @@ export function toAnalyticsView(res: BackendAnalyticsResponse): AnalyticsView {
       count: res.statusDistribution?.[status] ?? 0,
     })),
     topProducts: (res.topProducts ?? []).map((product) => ({
-      productId: product.productId,
+      productId: normalizeProductId(product.productId),
       name: product.productName,
       quantitySold: product.quantitySold,
       revenue: product.revenue ?? null,

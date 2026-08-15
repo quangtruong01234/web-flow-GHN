@@ -37,7 +37,7 @@ function analyticsView(revenueVisible: boolean): AnalyticsView {
     ],
     topProducts: [
       {
-        productId: 7,
+        productId: "prod_ffc7fc2281d211f1",
         name: "Samsung 990 Pro 1TB NVMe SSD",
         quantitySold: 2,
         revenue: revenueVisible ? 3_600_000 : null,
@@ -72,8 +72,45 @@ describe("AnalyticsPanel", () => {
     expect(screen.getByText("Avg order value")).toBeInTheDocument();
     expect(screen.getByText("Revenue over time")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Revenue" })).toBeInTheDocument();
-    expect(screen.getByText(/By revenue, completed orders/)).toBeInTheDocument();
     expect(screen.getByText(/revenue counts completed orders only/)).toBeInTheDocument();
+  });
+
+  // The backend ranks topProducts by quantitySold for every role, so the caption
+  // must say so in both branches. It used to claim "By revenue" whenever the
+  // money column was visible, which contradicted the rows on screen.
+  it("captions the top-product ranking as quantity sold in both roles", () => {
+    mockView(true);
+    const { unmount } = render(<AnalyticsPanel />);
+    expect(screen.getByText(/By quantity sold, completed orders/)).toBeInTheDocument();
+    expect(screen.queryByText(/By revenue/)).not.toBeInTheDocument();
+    unmount();
+
+    mockView(false);
+    render(<AnalyticsPanel />);
+    expect(screen.getByText(/By quantity sold, completed orders/)).toBeInTheDocument();
+  });
+
+  // GHN-RBAC-01 again: the column is visible, but this one row has no figure.
+  // A dash says "not reported"; a zero would say "sold nothing".
+  it("dashes a missing product revenue instead of printing a zero", () => {
+    const view = analyticsView(true);
+    useAnalyticsMock.mockReturnValue({
+      data: {
+        ...view,
+        topProducts: [
+          { productId: "prod_ffc7fc2281d211f1", name: "No figure", quantitySold: 2, revenue: null },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      isPlaceholderData: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useAnalytics>);
+
+    render(<AnalyticsPanel />);
+
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText("0 VND")).not.toBeInTheDocument();
   });
 
   it("hides every money field and plots order volume when revenue is omitted", () => {
@@ -108,5 +145,41 @@ describe("AnalyticsPanel", () => {
 
     expect(screen.queryByText("0 VND")).not.toBeInTheDocument();
     expect(screen.queryByText(/0\.0M VND/)).not.toBeInTheDocument();
+  });
+
+  // IDLEAK-02: several top products can be `null` at once (deleted catalog rows,
+  // or the product service being down). Keying rows on `productId` alone would
+  // then collide and React would reconcile the wrong row.
+  it("renders every top product when the ids are unresolved", () => {
+    const view = analyticsView(true);
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    useAnalyticsMock.mockReturnValue({
+      data: {
+        ...view,
+        topProducts: [
+          { productId: null, name: "Deleted product A", quantitySold: 4, revenue: 1_000 },
+          { productId: null, name: "Deleted product B", quantitySold: 3, revenue: 900 },
+          {
+            productId: "prod_ffc4fcfc81d211f1",
+            name: "Live product",
+            quantitySold: 2,
+            revenue: 800,
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      isPlaceholderData: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useAnalytics>);
+
+    render(<AnalyticsPanel />);
+
+    expect(screen.getByText("Deleted product A")).toBeInTheDocument();
+    expect(screen.getByText("Deleted product B")).toBeInTheDocument();
+    expect(screen.getByText("Live product")).toBeInTheDocument();
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
   });
 });

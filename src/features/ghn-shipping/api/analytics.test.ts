@@ -4,6 +4,9 @@ import {
   type BackendAnalyticsResponse,
 } from "./analytics";
 
+/** IDLEAK-02: analytics carries the opaque product public id, not a numeric PK. */
+const PRODUCT_PUBLIC_ID = "prod_ffc7fc2281d211f1";
+
 function backendResponse(
   overrides: Partial<BackendAnalyticsResponse> = {},
 ): BackendAnalyticsResponse {
@@ -34,7 +37,12 @@ function backendResponse(
       refunded: 0,
     },
     topProducts: [
-      { productId: 7, productName: "Áo thun", quantitySold: 12, revenue: 3_600_000 },
+      {
+        productId: PRODUCT_PUBLIC_ID,
+        productName: "Áo thun",
+        quantitySold: 12,
+        revenue: 3_600_000,
+      },
     ],
     ...overrides,
   };
@@ -55,7 +63,12 @@ describe("toAnalyticsView", () => {
       { period: "2026-06-02", revenue: 0, orderCount: 0 },
     ]);
     expect(view.topProducts).toEqual([
-      { productId: 7, name: "Áo thun", quantitySold: 12, revenue: 3_600_000 },
+      {
+        productId: PRODUCT_PUBLIC_ID,
+        name: "Áo thun",
+        quantitySold: 12,
+        revenue: 3_600_000,
+      },
     ]);
   });
 
@@ -82,7 +95,13 @@ describe("toAnalyticsView", () => {
         totalOrders: full.summary.totalOrders,
       },
       revenueOverTime: [{ period: "2026-06-01", orderCount: 2 }],
-      topProducts: [{ productId: 7, productName: "Áo thun", quantitySold: 12 }],
+      topProducts: [
+        {
+          productId: PRODUCT_PUBLIC_ID,
+          productName: "Áo thun",
+          quantitySold: 12,
+        },
+      ],
     });
 
     expect(view.revenueVisible).toBe(false);
@@ -96,8 +115,49 @@ describe("toAnalyticsView", () => {
       { period: "2026-06-01", revenue: null, orderCount: 2 },
     ]);
     expect(view.topProducts).toEqual([
-      { productId: 7, name: "Áo thun", quantitySold: 12, revenue: null },
+      {
+        productId: PRODUCT_PUBLIC_ID,
+        name: "Áo thun",
+        quantitySold: 12,
+        revenue: null,
+      },
     ]);
+  });
+
+  // IDLEAK-02: `productId` is an opaque `prod_...` id, `null` when the product
+  // no longer resolves, and still numeric if this console deploys ahead of the
+  // backend. All three must survive the view model.
+  describe("topProducts productId", () => {
+    it("passes an opaque public id through unchanged", () => {
+      const view = toAnalyticsView(backendResponse());
+      expect(view.topProducts[0].productId).toBe(PRODUCT_PUBLIC_ID);
+    });
+
+    it("keeps an unresolved product as null instead of a stringified placeholder", () => {
+      const view = toAnalyticsView(
+        backendResponse({
+          topProducts: [
+            { productId: null, productName: "Đã xoá", quantitySold: 3 },
+            { productId: null, productName: "Đã xoá 2", quantitySold: 1 },
+          ],
+        }),
+      );
+      expect(view.topProducts.map((product) => product.productId)).toEqual([
+        null,
+        null,
+      ]);
+    });
+
+    it("stringifies a legacy numeric product id", () => {
+      const view = toAnalyticsView(
+        backendResponse({
+          topProducts: [
+            { productId: 7, productName: "Áo thun", quantitySold: 12 },
+          ],
+        }),
+      );
+      expect(view.topProducts[0].productId).toBe("7");
+    });
   });
 
   it("reports revenue as visible when the money fields are present", () => {
