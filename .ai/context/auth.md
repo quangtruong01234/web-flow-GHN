@@ -47,8 +47,28 @@ export const ALLOWED_ROLES = ["logistics_operator", "shipping_manager"];
   - not authenticated -> redirect to `/login`;
   - authenticated but role not in `ALLOWED_ROLES` -> `/403`;
   - wait for `ready` before deciding.
+- The redirect lives in an effect, so it never guards anything on its own: `AuthGate` holds
+  the "Checking your session..." state for `!ready || !user || !isAllowedRole(user.role)`.
+  A disallowed role is a non-null `user`, and without the third clause the shell paints —
+  and its React Query hooks fetch — for the frame before `/403` lands (risks item 22).
 - Read auth via `useAuth()` only. Do not read storage or call `/me` directly inside page
   components.
+
+## Session expiry mid-session
+
+`/me` runs once on mount, but the cookie is issued with a 5h `Max-Age`, so it usually
+expires while the console is open. A gateway `401` is therefore the only signal:
+
+- The query and mutation caches (`src/lib/queryClient.ts`) publish it through
+  `src/lib/session-expiry.ts` — a small in-memory pub/sub, needed because `Providers`
+  builds the query client *above* `AuthProvider`, so the caches cannot call `useAuth()`.
+- `AuthProvider` subscribes and clears `user`; the existing `AuthGate` effect redirects to
+  `/login?next=<path>`, which `GhnLoginCard` honours on success.
+- Only `401` does this. A `403` is the gateway refusing this role or action — sending it to
+  `/login` would loop the operator straight back in.
+- Only the caches publish. `authApi.login`/`me` bypass React Query, so a wrong password can
+  never be mistaken for an expiry.
+- Nothing is persisted: the signal is in-memory, in line with the storage rule above.
 
 ## Components
 

@@ -10,6 +10,71 @@ context if relevant).
 
 ---
 
+### 2026-08-29 — `AuthGate` no longer paints protected content for a disallowed role
+
+Closes risks item **22** (moved to §Resolved, number kept) — the second finding of the
+2026-08-28 sweep audit. FE-only; one condition and its tests.
+
+- **The gap.** The `/403` redirect lives in an effect, so it decides nothing about the frame
+  React has already scheduled. `AuthGate` held its "Checking your session..." state only for
+  `!ready || !user`, and a disallowed role is a perfectly non-null `user` — so the console
+  shell rendered once, and every page hook under it (`useShipmentList`, `useAnalytics`, …)
+  fired a real gateway request before the redirect landed.
+- **Why it mattered beyond a flash.** For `shop`/`user` the gateway answers 403 and nothing
+  leaks. But it *does* grant generic `admin` read access to `/api/order/admin/ghn/*` — so an
+  `admin` briefly saw real shipment rows on the console that is meant to bounce them (that
+  bounce is intended; handoff note 2026-08-11). `admin` is explicitly not a GHN console role.
+- **The fix.** The render path now holds the same condition the effect acts on:
+  `!ready || !user || !isAllowedRole(user.role)`. The general rule, recorded in `auth.md`: a
+  redirect decided in an effect never guards anything by itself.
+- **Tests:** new `AuthGate.test.tsx` case (protected child absent both before and after the
+  `/403` redirect for `shop`, checking state still shown) and a new Playwright test in
+  `e2e/role-matrix.spec.ts` that mocks `/me` as `admin` and asserts `/403` **plus an empty
+  list of intercepted `/api` reads** — the assertion that would have caught this. 99 Jest
+  tests / 14 suites, 12 Playwright specs; lint + build + `tsc --noEmit` clean.
+- **Runtime-verified** against the live dev gateway: signed in as `testadmin` (role `admin`)
+  at `http://localhost:3013` → landed on `/403` ("Access restricted"), and DevTools recorded
+  only `/api/user/me`, `/api/user/login` and the `/403` RSC fetch. No `/api/order/admin/*`
+  request at all.
+
+### 2026-08-28 — A gateway 401 now returns the operator to login
+
+Sweep fix for risks item **21** (moved to §Resolved, number kept). Both prescribed backlog
+sources were empty — `../.agent-local/frontend-handoff-ghn.md` **Open** has no entries and
+`release-gate.md` marks this repo `n/a` — so the sweep audited instead and fixed the top
+finding. FE-only; no backend change and no contract change.
+
+- **The gap.** `AuthProvider` calls `/me` exactly once on mount, so a cookie that expires
+  during a shift (it is issued `Max-Age=18000`, 5h) was invisible to the guard, and the
+  React Query caches never inspected `ApiError.status`. Every screen fell to `ErrorState`'s
+  generic "We could not load this data. Try again in a moment." behind a Retry button that
+  could only 401 again — and `retry: 1` doubled each one. That contradicts the documented
+  rule in `core.md` and `auth.md`: "401 -> redirect to `/login`".
+- **Why a pub/sub.** `Providers` builds the query client *above* `AuthProvider`, so the
+  caches cannot reach `useAuth()`. New `src/lib/session-expiry.ts` is a ~25-line in-memory
+  `Set` of listeners — no new dependency, and nothing is persisted, so the "no identity or
+  role hint in browser storage" rule still holds. `queryClient.ts` publishes on a 401 from
+  either cache; `AuthProvider` subscribes and clears `user`; the existing `AuthGate` effect
+  does the redirect and already appends `?next=<path>`, which `GhnLoginCard` already
+  honours — so the login round trip lands the operator back on the screen they lost.
+- **Two boundaries worth keeping.** A `403` is the gateway refusing this role or action, not
+  an expired session — reporting it would bounce the operator to `/login` and straight back.
+  And only the caches publish: `authApi.login`/`me` bypass React Query, so a wrong password
+  can never look like an expiry. 4xx also stop retrying — the backend's verdict on that exact
+  request does not change on a second try (5xx still retries once).
+- **Tests:** new `src/lib/queryClient.test.ts` (5 cases: 401 on a query and on a mutation
+  both report; 403 does not; 4xx not retried; 5xx retried once), one new `AuthGate.test.tsx`
+  case (expiry mid-session → `/login?next=%2Fshipments`, protected child unmounts), and new
+  `e2e/session-expiry.spec.ts` (mocked gateway flips to 401 on a list refetch). 98 Jest tests
+  / 14 suites, 11 Playwright specs; lint + build + `tsc --noEmit` clean.
+- **Runtime-verified** against the live dev gateway as `shipmgr_test`: loaded `/shipments`
+  (167 real orders), cleared the cookie out-of-band via `POST /api/user/logout`, typed in the
+  search box to force a refetch → landed on `/login?next=%2Fshipments`; signing back in
+  returned to `/shipments`.
+- **Left open:** risks item **22** — `AuthGate` renders `children` for one paint before
+  redirecting a disallowed role, and the gateway grants generic `admin` read access to
+  `/api/order/admin/ghn/*`. Recorded for the next sweep.
+
 ### 2026-08-16 — GHN-FAIL-01: `delivery_fail` has no local status **on purpose**
 
 The sweep filed the unmapped `delivery_fail` as a suspected backend gap

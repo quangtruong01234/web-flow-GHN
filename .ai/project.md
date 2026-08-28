@@ -60,8 +60,16 @@ Treat every rule in those files as active project guidance.
   message `Unhandled GHN status` (forward-only wording change). `exception`/`damage`/`lost`
   surface as a red GHN pill via `rawGhnMeta()`. See `handoff/CHANGELOG.md` 2026-08-16 and
   risks.md item 6.
+- A gateway `401` ends the session client-side: the query/mutation caches publish through
+  `lib/session-expiry.ts`, `AuthProvider` drops `user`, and `AuthGate` redirects to
+  `/login?next=<path>`. A `403` must never do this — it is a role/action refusal, and
+  bouncing to login would loop. See `handoff/CHANGELOG.md` 2026-08-28 and risks.md item 21.
+- `AuthGate` holds its checking state for `!ready || !user || !isAllowedRole(user.role)`.
+  The `/403` redirect lives in an effect, so the render path must repeat the condition or a
+  disallowed role paints the shell — and fires its gateway reads — for one frame. See
+  `handoff/CHANGELOG.md` 2026-08-29 and risks.md item 22.
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 92 tests / 13 suites), `npx.cmd playwright test` (10 specs).
+  `npm.cmd test` (Jest, 99 tests / 14 suites), `npx.cmd playwright test` (12 specs).
 
 ## Next task order
 

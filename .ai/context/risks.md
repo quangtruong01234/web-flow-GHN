@@ -127,3 +127,21 @@ is in `handoff/CHANGELOG.md` under the matching date.
     that list `ORDER BY quantitySold DESC` for every role, so the caption is always "By
     quantity sold"; revenue is an extra column, never the sort key. A missing per-row
     revenue renders as `—`, following 15.
+21. **A 401 mid-session stranded the console on a generic error** - RESOLVED 2026-08-28. The
+    cookie carries a 5h `Max-Age` and `/me` runs only on mount, so an expiry can surface
+    *only* through a data request. Any gateway `401` now publishes through
+    `lib/session-expiry.ts`; `AuthProvider` drops `user` and the existing `AuthGate` redirect
+    carries the path as `?next=`. Two rules follow: a `401` is the only status that means
+    "session gone" — a `403` is a role/action refusal and must never bounce to `/login`, or
+    the operator loops — and the signal is published from the query/mutation caches only, so
+    a wrong password on `authApi.login` (which bypasses React Query) can never masquerade as
+    an expiry. 4xx are no longer retried: the backend's verdict on that exact request will
+    not change. The signal is in-memory; nothing about the session is persisted (see 1).
+22. **`AuthGate` painted protected content while redirecting a disallowed role** - RESOLVED
+    2026-08-29. A disallowed role is still a non-null `user`, so gating the spinner on
+    `!ready || !user` let the shell render — and its React Query hooks fetch — in the frame
+    before `router.replace("/403")` landed. The gateway grants generic `admin` read access to
+    `/api/order/admin/ghn/*`, so that frame showed real shipment data to the one role this
+    console exists to bounce. The gate now also holds on `!isAllowedRole(user.role)`. Rule: a
+    redirect decided in an effect never guards anything by itself — the render path must hold
+    the same condition, or one paint escapes.
