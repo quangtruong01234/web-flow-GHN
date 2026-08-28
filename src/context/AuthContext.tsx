@@ -13,6 +13,7 @@ import {
   type BackendLoginUser,
   type BackendMeUser,
 } from "@/lib/auth-api";
+import { onSessionExpired } from "@/lib/session-expiry";
 
 /** GHN console roles allowed into the protected area. */
 export const ALLOWED_ROLES: readonly string[] = [
@@ -104,6 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
+
+  // The cookie can expire while the console is open (it is issued with a 5h
+  // Max-Age), and `/me` above only runs on mount. Any gateway 401 therefore
+  // drops the hydrated user, which hands the redirect to `AuthGate`.
+  useEffect(() => onSessionExpired(() => setUser(null)), []);
 
   const login = useCallback(async (username: string, password: string) => {
     const backend = await authApi.login(username, password);
