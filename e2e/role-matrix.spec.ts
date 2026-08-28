@@ -139,3 +139,34 @@ test.describe("logistics_operator role matrix", () => {
     ).toHaveCount(0);
   });
 });
+
+// risks.md item 22 — generic `admin` is not a GHN console role, but the gateway
+// *does* grant it read access to `/api/order/admin/ghn/*`. The guard has to hold
+// the checking state until the /403 redirect lands, or the shell paints and its
+// React Query hooks fetch real shipment data for the role we mean to bounce.
+test("a disallowed role reaches /403 without ever reading the GHN routes", async ({
+  page,
+}) => {
+  const ghnReads: string[] = [];
+
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+
+    if (path === "/api/user/me") {
+      await route.fulfill({ json: { data: backendMeUser("admin") } });
+      return;
+    }
+
+    // Anything the guard lets through would be a real read for this role.
+    ghnReads.push(path);
+    await route.fulfill({ json: { data: list } });
+  });
+
+  await page.goto("/shipments");
+
+  await expect(page).toHaveURL(/\/403$/);
+  await expect(
+    page.getByRole("heading", { name: "Access restricted" }),
+  ).toBeVisible();
+  expect(ghnReads).toEqual([]);
+});
