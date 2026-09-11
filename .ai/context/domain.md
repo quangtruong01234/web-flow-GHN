@@ -49,6 +49,29 @@ as a **red GHN pill** through `rawGhnMeta()` — colour only; they are not `GhnS
 Their history rows read "acknowledged; no local equivalent", but the older "Unhandled GHN
 status" wording survives on rows written before 2026-08-16 — never string-match either.
 
+## Sync is not a read-only action (GHN-FAIL-NTF-01)
+
+Since 2026-09-11 the backend notifies the **buyer** the first time an order records a
+`delivery_fail` (`type: "order_delivery_attempt_failed"`). Three paths trigger it and two of
+them are console buttons: `POST .../sync` and `POST .../demo-status`. Nothing in either
+response says whether a notification fired — it is best-effort and out of band — and the
+dedupe is per order over the whole `shipping_history`, so a second press is silently correct,
+not a lost message. Rows written before 2026-09-11 count, so an order that already failed
+once will never fire retroactively; test on an order whose history is clean.
+
+Two rules follow:
+
+- **Never add bulk sync, auto-sync on mount, a `refetchInterval`, or any other loop over the
+  sync endpoint.** Every syncable order that GHN has moved to `delivery_fail` would message
+  its buyer the moment the loop ran. The console syncs one order per explicit click, and the
+  `/sync` page and the detail action panel both say so next to the button.
+- **"Demo" stops at GHN.** The demo endpoint simulates the *carrier call*, not the
+  consequences — a demo `delivery_fail` writes a real status and sends a real notification.
+  The demo picker warns when that target is selected.
+
+If the console ever needs to show whether a buyer was notified, there is no field for it —
+open a `backend-handoff.md` request rather than inferring it from history text.
+
 ## Core entities
 
 - Gateway list/detail/history/sync/action view models live in

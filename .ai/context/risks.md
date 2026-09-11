@@ -66,6 +66,44 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
   ask the backend to allow-list it rather than parsing a substitute.
 - **Owner/area:** Frontend shipment detail.
 
+## 23. Sync and demo-status have a buyer-visible side effect
+
+- **Risk:** GHN-FAIL-NTF-01 (2026-09-11) — the first `delivery_fail` an order records pushes an
+  in-app notification to the **buyer**. Two of the three trigger paths are console buttons:
+  `POST .../sync` and `POST .../demo-status`. The console therefore owns a customer-facing
+  side effect it cannot see: the responses are byte-identical to before and carry no "sent"
+  flag.
+- **Impact:** A bulk "sync all", an auto-sync on mount, or a `refetchInterval` would message
+  every buyer whose parcel GHN has already failed to deliver — in one click, from a screen
+  that reads like a refresh. A demo `delivery_fail` reaches a real buyer too; only the carrier
+  call is simulated.
+- **Current status:** Mitigated 2026-09-11. Audited: no polling anywhere
+  (`lib/queryClient.ts:46-48` — `staleTime` 60s, `refetchOnWindowFocus: false`, no
+  `refetchInterval`), no bulk control, sync fires one order per explicit click
+  (`GhnSyncPage.tsx:34`, `ShipmentDetail.tsx:332`). The consequence is now stated at each
+  button — `GhnSyncPage.tsx` sync card, the note under "Sync GHN status", and a warning in the
+  demo block when the selected target is `delivery_fail` — and pinned by four Jest tests.
+- **Suggested fix:** Keep sync one-per-click. Do not add bulk/auto/interval sync. If a
+  "notified the buyer?" indicator is ever wanted, request a field via `backend-handoff.md`;
+  never infer it from history wording (see item 6).
+- **Owner/area:** Frontend sync + demo controls.
+
+## 27. `/history` is not an audit log
+
+- **Risk:** The nav reads "Action History", but there is no global shipping-history endpoint —
+  history is per order (`GET .../orders/:id/history`). The page lists the 50 most recently
+  updated orders with their latest GHN status and last sync.
+- **Impact:** It cannot answer "who cancelled this yesterday" or "what did this operator do".
+  The per-order timeline can; the list cannot, and the label invites the harder question.
+- **Current status:** Stated where it matters — the card reads "Recent shipping activity ·
+  Latest GHN status per order — open an order for its full timeline", and the limitation is
+  recorded at `ActionHistoryPage.tsx:12`. Not misleading in the page itself.
+- **Suggested fix:** If an operator-scoped or cross-order audit view is ever wanted, request a
+  real endpoint through `../.agent-local/backend-handoff.md`. Do **not** synthesise one by
+  fanning out per-order history requests across the list — that is N requests per page view,
+  and the list has no actor field to filter on.
+- **Owner/area:** Frontend `/history` + backend order service.
+
 ## Resolved
 
 Compacted 2026-08-16. Each line keeps the **rule** the item left behind; the full history
@@ -145,3 +183,24 @@ is in `handoff/CHANGELOG.md` under the matching date.
     console exists to bounce. The gate now also holds on `!isAllowedRole(user.role)`. Rule: a
     redirect decided in an effect never guards anything by itself — the render path must hold
     the same condition, or one paint escapes.
+24. **Cancel and return fired on a single click** - RESOLVED 2026-09-11. Both are one-way at
+    the carrier (cancel kills the waybill, return sends the parcel back to the seller) and
+    both sat one stray click away, while the two *reversible* waybill edits beside them had
+    always had a modal. They now route through a confirm dialog stating the consequence,
+    the receiver, and the COD. Rule: irreversibility, not the shape of the input, decides
+    whether an action gets a confirm step — a button that only needs a click is the one to
+    check.
+25. **Dashboard KPIs read as totals but count one page** - RESOLVED 2026-09-11. The cards
+    count the ~100 orders the list query returned, not the queue (170 live at the time), so
+    "Failed deliveries: 3" invited "only 3 failed" when 3 was a floor. There is no
+    per-status count endpoint, so the scope is stated instead of guessed: counts carry a
+    `+` and a banner names the window, and the status-distribution caption reads "newest N
+    of M". Follows 15 — under-reporting silently is the same fault as zeroing.
+26. **`/settings` shipped mock controls, including an auto-sync toggle** - RESOLVED
+    2026-09-11. The page rendered a fake GHN token/shop id, a "Save settings" button that
+    toasted "saved" while saving nothing, and an "Auto sync failed deliveries" switch
+    defaulted **on** and wired to nothing. Under 23 that label describes the one loop the
+    console must never have, so the toggle was deleted rather than implemented and the page
+    now states the policy. Rule: never render a control for a capability the console does
+    not have — a placeholder with a plausible label is a specification someone will
+    eventually satisfy.

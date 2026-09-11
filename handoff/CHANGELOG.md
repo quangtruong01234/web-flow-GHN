@@ -10,6 +10,94 @@ context if relevant).
 
 ---
 
+### 2026-09-11 — Confirm step for destructive actions, honest KPI scope, real `/settings`
+
+Self-audit of the console against the live dev gateway (170 orders, `shipmgr_test`), not
+against the docs. Three findings, all FE-only, no backend contract involved. Opens risks
+items **24**, **25**, **26**.
+
+- **Cancel and return had no confirm step** (risks 24). Both are one-way at the carrier, and
+  both fired on one click — while "Update COD" and "Update receiver info", which are
+  reversible, had always opened a modal. The destructive pair now route through the same
+  `Modal`: it names the consequence ("GHN stops the waybill…", "…the leg cannot be reversed
+  from this console"), repeats the order and GHN code, and shows the receiver + COD so the
+  operator can see *which* parcel they are killing. The confirm button reuses the action
+  label and the `danger` variant for cancel. Nothing is sent until it is pressed.
+- **Dashboard KPIs counted a page and read as totals** (risks 25). `ShipmentStatCards` sums
+  the ~100 orders the list query returned; the queue held 170, so "Failed deliveries: 3" was
+  a floor presented as a total — and that card is a work queue, so under-reporting it is the
+  costly direction. There is no per-status count endpoint and adding one is a backend ask, so
+  the scope is *stated* rather than guessed: counts render as `3+`, an amber banner reads
+  "Counted over the 100 most recent orders, not all 170 in the queue", the COD hint becomes
+  "Not yet delivered · at least", and the status-distribution caption reads "newest 100 of
+  170". Same rule as risks 15 — a misleading number is worse than an absent one.
+- **`/settings` was entirely mock, and one control was a trap** (risks 26). It rendered a fake
+  GHN token and shop id, a "Save settings" button that toasted "saved" while writing nothing,
+  and an **"Auto sync failed deliveries"** switch defaulted on and wired to nothing. Under
+  GHN-FAIL-NTF-01 (risks 23) implementing that label is exactly the loop that would message
+  every buyer whose parcel already failed, so the toggle was deleted rather than wired. The
+  page now shows what is true — the gateway base URL, whether `NEXT_PUBLIC_GHN_DEMO_MODE` is
+  on, and "Backend-only — never sent here" for every carrier secret — plus the no-auto-sync
+  policy in prose.
+- **Two smaller fixes.** The topbar's green "Webhook listening (mock)" pill claimed a health
+  signal the console cannot observe (webhook delivery is backend-side) and sat beside real
+  gateway data; it is replaced by an amber **Demo mode** pill, which is a fact the console
+  owns and worth flagging because demo controls write real statuses. And `ToastHost` returned
+  `null` while empty, so the `aria-live` region and its text were inserted in the same commit
+  — routinely missed by screen readers. The container is now always mounted and carries the
+  live region; sync and action results are announced nowhere else.
+- **Tests:** 9 new Jest cases — 3 in `ShipmentDetail.test.tsx` (no carrier call before
+  confirm, backing out via "Keep as is", return confirmed separately), plus new
+  `ShipmentStatCards.test.tsx`, `GhnSettingsPage.test.tsx`, `ToastHost.test.tsx`. The four
+  existing destructive-action tests now click through a `clickAndConfirm` helper scoped with
+  `within(dialog)`, since the dialog repeats the action label. **112 tests / 17 suites**
+  (was 103 / 14). Lint, `tsc --noEmit`, and `next build` clean.
+- **Runtime-verified** against the dev gateway as `shipping_manager`: the confirm dialog opens
+  on a real `delivery_fail` order and **no** `POST .../cancel` appears in the network log after
+  backing out; the dashboard shows `2+` / `3+` with the 100-of-170 banner; `/settings` and the
+  demo pill render as described. Sync and Apply-demo-status were deliberately not pressed —
+  either can notify a real buyer (risks 23).
+
+---
+
+### 2026-09-11 — Sync and demo-status now say they can notify the buyer
+
+Integrates handoff item **GHN-FAIL-NTF-01** (backend, 2026-09-11) and opens risks item **23**
+as mitigated. The backend labelled it "no FE code change needed" — true of the contract, and
+the entry still described a risk the console owns. FE-only; copy, tests, guidance.
+
+- **What the backend changed.** The first `delivery_fail` an order records now pushes an
+  in-app notification to the **buyer** (`type: "order_delivery_attempt_failed"`). Three paths
+  trigger it and two are console buttons: `POST .../sync` and `POST .../demo-status`. Both
+  responses are byte-identical to before — the send is best-effort and out of band, so nothing
+  reports whether it fired. Dedupe is per order across the whole `shipping_history`, and rows
+  written before 2026-09-11 count.
+- **The audit came first.** Grep-verified that the dangerous shape does not exist:
+  `src/lib/queryClient.ts:46-48` sets `staleTime` 60s and `refetchOnWindowFocus: false` with
+  **no** `refetchInterval`, there is no bulk control, and sync fires one order per explicit
+  click (`GhnSyncPage.tsx:34`, `ShipmentDetail.tsx:332`). Nothing was broken; what was missing
+  was any reason for the *next* change not to break it.
+- **The sharper finding.** The demo picker offers `delivery_fail` (`GHN_STATUS_ORDER`
+  includes it), so a "demo" action writes a real status and sends a real buyer a real
+  notification. Only the carrier call is simulated. The handoff entry implied this; it did not
+  say it.
+- **The fix.** State the consequence where the operator can act on it: an amber note on the
+  `/sync` card, a note under "Sync GHN status" rendered **only when a sync action is actually
+  offered** (a disabled button warns about nothing), and a warning in the demo block that
+  appears when the selected target is `delivery_fail`. Recorded as a rule in
+  `.ai/context/domain.md` — never add bulk sync, auto-sync on mount, or a `refetchInterval`
+  over the sync endpoint.
+- **Tests:** 4 new Jest cases (one in `GhnSyncPage.test.tsx` asserting the warning *and* the
+  absence of a "Sync all" control; three in `ShipmentDetail.test.tsx` covering the sync note,
+  its absence when `canSync` is false, and the demo warning appearing only after
+  `delivery_fail` is selected). **103 Jest tests / 14 suites** (was 99/14); lint + build +
+  `tsc --noEmit` clean.
+- **Runtime-verified** against the live dev gateway as `shipmgr_test` — all three warnings
+  rendered, on `/sync` and on both a `delivery_fail` and a `ready_to_pick` shipment.
+  **Sync and Apply were deliberately not pressed**: either could send a real notification to a
+  real buyer. The dev list currently holds three orders already at `delivery_fail`, so a
+  "Sync all" button would have messaged three buyers in one click.
+
 ### 2026-08-29 — `AuthGate` no longer paints protected content for a disallowed role
 
 Closes risks item **22** (moved to §Resolved, number kept) — the second finding of the

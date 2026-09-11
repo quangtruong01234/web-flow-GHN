@@ -87,12 +87,12 @@ status are gateway-backed. Start the backend gateway and this app
 | ---------------------- | ------------------------------------------------------------------------------ |
 | `/login`               | Login form renders; `logistics_test` and `shipmgr_test` authenticate.          |
 | `/`                    | Authenticated user redirects to `/dashboard`; unauthenticated user to `/login`. |
-| `/dashboard`           | Stat cards + status distribution render from gateway shipment data.            |
+| `/dashboard`           | Stat cards + status distribution render from gateway shipment data; when the queue exceeds the fetched page, counts show `+` and the window banner names it. |
 | `/shipments`           | Gateway table renders; search/status filters work; rows link to detail.        |
-| `/shipments/[orderId]` | Detail + timeline render; sync/cancel/return/COD/receiver availability matches role/`availableActions`; demo controls appear only when enabled. |
+| `/shipments/[orderId]` | Detail + timeline render; sync/cancel/return/COD/receiver availability matches role/`availableActions`; cancel/return open a confirm dialog and send nothing until it is accepted; demo controls appear only when enabled. |
 | `/sync`                | `shipmgr_test` can sync eligible rows; `logistics_test` cannot.                |
 | `/history`             | Shipping history list renders from gateway-backed data.                        |
-| `/settings`            | Read-only settings/webhook info renders.                                       |
+| `/settings`            | Integration facts render read-only (gateway URL, demo flag, "backend-only" secrets, no-auto-sync policy); no inputs, no save button. |
 | `/403`                 | Forbidden page renders for a disallowed role.                                  |
 | unknown path           | Not-found page renders.                                                        |
 | Logout                 | Clears session and returns to `/login`.                                        |

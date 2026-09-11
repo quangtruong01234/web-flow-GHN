@@ -34,13 +34,19 @@ Cross-references: `.ai/context/auth.md`, `.ai/context/data-fetching.md`,
 - **Steps:**
   1. App shell (`GhnAdminShell` = `GhnSidebar` + `GhnTopbar`) wraps protected routes.
   2. `/dashboard` fetches gateway shipment data and renders stat cards + status distribution.
+     Both count the fetched page, not the queue, so when `total` exceeds it the counts carry
+     a `+` and name the window (risks 25). Never present them as queue totals.
   3. `/shipments` fetches paginated gateway data with search/status filters; rows link to
      `/shipments/[orderId]`.
   4. `/shipments/[orderId]` fetches detail + history and renders receiver/payment/GHN
      detail, timeline, sync control, available carrier actions, waybill edits, and
-     demo-status controls when demo mode is enabled.
+     demo-status controls when demo mode is enabled. Cancel and return are one-way, so they
+     open a confirm dialog first (risks 24); the waybill edits already had their own modals.
   5. `/history` renders gateway-backed history/list data.
-  6. `/settings` is a read-only webhook/settings view.
+  6. `/settings` states the integration facts the console actually knows — gateway base URL,
+     demo-mode flag, "backend-only" for every carrier secret — and the no-auto-sync policy.
+     It holds no inputs and saves nothing; do not add a control for a capability the console
+     does not have (risks 26).
 - **Important files:** `src/features/ghn-shipping/api/{shipments,adapters,types}.ts`,
   `src/features/ghn-shipping/hooks/useShipments.ts`,
   `src/features/ghn-shipping/components/{ShipmentDashboard,ShipmentStatCards,ShipmentTable,ShipmentDetail,ShipmentTimeline,ActionHistoryPage,GhnSettingsPage}.tsx`.

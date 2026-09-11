@@ -68,8 +68,20 @@ Treat every rule in those files as active project guidance.
   The `/403` redirect lives in an effect, so the render path must repeat the condition or a
   disallowed role paints the shell — and fires its gateway reads — for one frame. See
   `handoff/CHANGELOG.md` 2026-08-29 and risks.md item 22.
+- Backend decision **GHN-FAIL-NTF-01**: sync is no longer a read-only action. The first
+  `delivery_fail` an order records notifies the **buyer**, and two of the three trigger paths
+  are console buttons (`POST .../sync`, `POST .../demo-status`). Both responses are unchanged
+  and carry no "sent" flag. **Never add bulk sync, auto-sync on mount, or a `refetchInterval`**
+  over the sync endpoint, and remember a demo `delivery_fail` notifies a real buyer — only the
+  carrier call is simulated. See `handoff/CHANGELOG.md` 2026-09-11 and risks.md item 23.
+- Cancel and return are irreversible at the carrier, so both go through a confirm dialog
+  before anything is sent; the reversible waybill edits keep their own modals. Dashboard KPI
+  cards count the fetched page, not the queue — when `total` is larger they render `N+` and
+  a banner names the window. `/settings` holds no inputs: it states the gateway base URL, the
+  demo flag, "backend-only" for every carrier secret, and the no-auto-sync policy. See
+  `handoff/CHANGELOG.md` 2026-09-11 and risks.md items 24-26.
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 99 tests / 14 suites), `npx.cmd playwright test` (12 specs).
+  `npm.cmd test` (Jest, 112 tests / 17 suites), `npx.cmd playwright test` (12 specs).
 
 ## Next task order
 
