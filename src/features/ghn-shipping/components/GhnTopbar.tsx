@@ -14,6 +14,7 @@ function initials(name: string): string {
 export function GhnTopbar({ title }: { title: string }) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const demoMode = process.env.NEXT_PUBLIC_GHN_DEMO_MODE === "true";
 
   const onLogout = async () => {
     await logout();
@@ -27,10 +28,19 @@ export function GhnTopbar({ title }: { title: string }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="hidden items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-[11.5px] font-semibold text-green-700 sm:inline-flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-          Webhook listening (mock)
-        </span>
+        {/*
+         * Was a green "Webhook listening (mock)" pill — a health indicator the
+         * console cannot actually observe (webhook delivery is backend-side), sat
+         * next to real gateway data. Replaced with a flag the console does own:
+         * demo mode, which is worth flagging because its controls write real
+         * statuses and can notify real buyers.
+         */}
+        {demoMode ? (
+          <span className="hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11.5px] font-semibold text-amber-700 sm:inline-flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            Demo mode
+          </span>
+        ) : null}
 
         <div className="flex items-center gap-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[12px] font-semibold text-brand-700">
