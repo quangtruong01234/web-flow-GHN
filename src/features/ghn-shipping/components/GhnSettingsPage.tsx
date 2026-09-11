@@ -1,51 +1,79 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Input";
-import { useToast } from "@/context/ToastContext";
+
+/**
+ * Read-only integration view.
+ *
+ * This page used to render fake credentials (`mock-token-not-real`, a made-up
+ * shop ID), a "Save settings" button that saved nothing while toasting "saved",
+ * and an "Auto sync failed deliveries" toggle that was wired to nothing. The
+ * toggle was the dangerous one: GHN-FAIL-NTF-01 makes an automated loop over the
+ * sync endpoint notify every buyer whose parcel already failed, so a control
+ * whose label invites exactly that must not sit here waiting to be implemented.
+ * The console has no GHN settings to write — carrier config is backend-only — so
+ * the page states what is true and offers no inputs.
+ */
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-line py-2.5 text-sm last:border-b-0">
+      <span className="text-ink-400">{label}</span>
+      <span className="text-right font-medium text-ink-900">{value}</span>
+    </div>
+  );
+}
+
+function BackendOnly() {
+  return <span className="font-normal text-ink-400">Backend-only — never sent here</span>;
+}
 
 export function GhnSettingsPage() {
-  const { push } = useToast();
-  const [autoSync, setAutoSync] = useState(true);
+  const gatewayBase = process.env.NEXT_PUBLIC_API_URL?.trim() || "/api";
+  const demoMode = process.env.NEXT_PUBLIC_GHN_DEMO_MODE === "true";
 
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
       <Card>
-        <CardHeader title="GHN integration" subtitle="Form UI only. Secrets are masked and not saved." />
-        <div className="space-y-4 p-5">
-          <Field label="Shop ID"><Input value="******2481" readOnly /></Field>
-          <Field label="GHN API token"><Input type="password" value="mock-token-not-real" readOnly /></Field>
-          <Field label="Webhook URL"><Input value="https://api.trybuy.local/api/ghn/webhook" readOnly /></Field>
-          <Field label="Webhook secret"><Input type="password" value="mock-secret-not-real" readOnly /></Field>
-          <label className="flex items-center justify-between rounded-lg border border-line px-3 py-3 text-sm">
-            <span>
-              <span className="block font-medium text-ink-900">Auto sync failed deliveries</span>
-              <span className="text-xs text-ink-400">Mock toggle for UI validation.</span>
-            </span>
-            <input type="checkbox" checked={autoSync} onChange={(event) => setAutoSync(event.target.checked)} />
-          </label>
-          <Button
-            onClick={() =>
-              push({
-                kind: "success",
-                title: "Settings saved locally",
-                message: "No real GHN credentials or secrets were stored.",
-              })
+        <CardHeader
+          title="GHN integration"
+          subtitle="Read-only. This console holds no carrier credentials and has nothing to save."
+        />
+        <div className="p-5">
+          <Row label="Gateway base URL" value={<code className="text-xs">{gatewayBase}</code>} />
+          <Row
+            label="Console demo mode"
+            value={
+              demoMode ? (
+                <span className="text-amber-700">Enabled (NEXT_PUBLIC_GHN_DEMO_MODE)</span>
+              ) : (
+                "Disabled"
+              )
             }
-          >
-            Save settings
-          </Button>
+          />
+          <Row label="GHN shop ID" value={<BackendOnly />} />
+          <Row label="GHN API token" value={<BackendOnly />} />
+          <Row label="Webhook URL" value={<BackendOnly />} />
+          <Row label="Webhook secret" value={<BackendOnly />} />
         </div>
       </Card>
 
       <Card>
-        <CardHeader title="Connection status" subtitle="Demo-only indicators" />
+        <CardHeader title="How status changes" subtitle="Who is allowed to move a shipment" />
         <div className="space-y-3 p-5 text-sm">
-          <div className="rounded-lg bg-green-50 px-3 py-2 font-medium text-green-700">Webhook URL reachable (mock)</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2 text-ink-500">Last token check: not performed in UI phase</div>
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">GHN token and shop_id must remain backend-only.</div>
+          <p className="text-ink-600">
+            GHN status is backend-owned. It changes only through a GHN webhook, an
+            operator sync, a supported carrier action, or the demo endpoint.
+          </p>
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+            There is no auto-sync, and there will not be one. Syncing an order that
+            GHN has moved to a failed delivery notifies the buyer, so the console
+            syncs one order per explicit click.
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-ink-500">
+            The GHN token, shop ID, and webhook secret stay backend-only. This
+            console never calls GHN directly.
+          </div>
         </div>
       </Card>
     </div>
