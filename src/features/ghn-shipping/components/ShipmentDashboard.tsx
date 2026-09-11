@@ -61,7 +61,7 @@ function ShipmentOverview() {
 
   return (
     <div className="space-y-6">
-      <ShipmentStatCards items={items} />
+      <ShipmentStatCards items={items} total={data.total} />
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Card>
@@ -105,7 +105,14 @@ function ShipmentOverview() {
         </Card>
 
         <Card>
-          <CardHeader title="Status distribution" subtitle="Backend-owned GHN status mix" />
+          <CardHeader
+            title="Status distribution"
+            subtitle={
+              data.total > items.length
+                ? `Backend-owned GHN status mix · newest ${items.length} of ${data.total}`
+                : "Backend-owned GHN status mix"
+            }
+          />
           <div className="space-y-4 p-5">
             {distribution.length === 0 ? (
               <p className="text-sm text-ink-500">
