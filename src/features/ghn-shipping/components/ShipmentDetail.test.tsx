@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
@@ -72,6 +72,17 @@ const detailFixture = shipmentDetailView({
 });
 
 const historyFixture = [shipmentHistoryRow({ ghnStatus: "delivery_fail" })];
+
+/**
+ * Cancel and return are one-way, so they go through a confirm dialog. The
+ * dialog's confirm button repeats the action label, hence the `within` scope —
+ * a bare `getByRole` would now match two buttons.
+ */
+async function clickAndConfirm(label: RegExp): Promise<void> {
+  await userEvent.click(screen.getByRole("button", { name: label }));
+  const dialog = screen.getByRole("dialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: label }));
+}
 
 describe("ShipmentDetail", () => {
   const useAuthMock = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -221,7 +232,7 @@ describe("ShipmentDetail", () => {
     });
     render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+    await clickAndConfirm(/Cancel shipment/i);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
@@ -239,7 +250,7 @@ describe("ShipmentDetail", () => {
     });
     render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+    await clickAndConfirm(/Cancel shipment/i);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
@@ -262,7 +273,7 @@ describe("ShipmentDetail", () => {
     });
     render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+    await clickAndConfirm(/Cancel shipment/i);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
@@ -281,7 +292,7 @@ describe("ShipmentDetail", () => {
     });
     render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+    await clickAndConfirm(/Cancel shipment/i);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(
@@ -290,6 +301,53 @@ describe("ShipmentDetail", () => {
           title: "GHN temporarily unavailable",
           message: expect.stringContaining("retry in a moment"),
         }),
+      );
+    });
+  });
+
+  // Cancel kills the GHN waybill for good and return puts the parcel on a leg
+  // back to the seller. Neither is reversible from this console, so neither may
+  // fire on a single click.
+  it("does not call the carrier until the destructive action is confirmed", async () => {
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Cancel shipment/i }));
+
+    expect(actionMutateMock).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog", { name: /cancel this shipment\?/i });
+    expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole("button", { name: /Cancel shipment/i }));
+
+    await waitFor(() => {
+      expect(actionMutateMock).toHaveBeenCalledWith(
+        { orderId: ORDER_PUBLIC_ID, action: "cancel" },
+        expect.any(Object),
+      );
+    });
+  });
+
+  it("abandons the action when the operator backs out of the dialog", async () => {
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Return to seller/i }));
+    await userEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /Keep as is/i }),
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(actionMutateMock).not.toHaveBeenCalled();
+  });
+
+  it("confirms the return action separately from cancel", async () => {
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    await clickAndConfirm(/Return to seller/i);
+
+    await waitFor(() => {
+      expect(actionMutateMock).toHaveBeenCalledWith(
+        { orderId: ORDER_PUBLIC_ID, action: "return" },
+        expect.any(Object),
       );
     });
   });
@@ -334,6 +392,32 @@ describe("ShipmentDetail", () => {
     });
   });
 
+  // GHN-FAIL-NTF-01: sync is no longer a pure read. The note belongs next to a
+  // button the operator can actually press — a disabled one warns about nothing.
+  it("warns at the sync button that the buyer may be notified", () => {
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.getByText(/not read-only/i)).toBeInTheDocument();
+    expect(screen.getByText(/the buyer is notified once/i)).toBeInTheDocument();
+  });
+
+  it("drops the sync warning when the backend offers no sync action", () => {
+    useShipmentDetailMock.mockReturnValue({
+      data: shipmentDetailView({
+        canSync: false,
+        availableActions: ["read", "history"],
+      }),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentDetail>);
+
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.queryByText(/not read-only/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/syncing is not available for this shipment/i)).toBeInTheDocument();
+  });
+
   it("hides demo controls unless demo mode is enabled", () => {
     render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
 
@@ -366,6 +450,29 @@ describe("ShipmentDetail", () => {
         }),
       );
     });
+  });
+
+  // GHN-FAIL-NTF-01: only the carrier call is simulated. A demo `delivery_fail`
+  // writes a real status, so the buyer gets the same real notification.
+  it("warns that a demo delivery failure notifies the buyer for real", async () => {
+    process.env.NEXT_PUBLIC_GHN_DEMO_MODE = "true";
+    useShipmentDetailMock.mockReturnValue({
+      data: shipmentDetailView({ ghnStatus: "delivering", rawGhnStatus: "delivering" }),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentDetail>);
+
+    render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.queryByText(/the buyer is notified for real/i)).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/set ghn status/i),
+      "delivery_fail",
+    );
+
+    expect(screen.getByText(/the buyer is notified for real/i)).toBeInTheDocument();
   });
 
   it("shows demo-disabled 403 as environment feedback", async () => {

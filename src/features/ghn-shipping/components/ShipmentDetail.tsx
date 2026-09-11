@@ -78,6 +78,26 @@ const ACTION_LABEL: Record<ShipmentManualAction, string> = {
   return: "Return to seller",
 };
 
+// Both carrier actions are one-way: cancel kills the GHN waybill for good, and
+// return puts the parcel on a leg back to the seller. Neither can be undone from
+// this console. The two *waybill edits* below have always had a modal, so the
+// destructive pair were the only buttons here that fired on a single click.
+const ACTION_CONFIRM: Record<
+  ShipmentManualAction,
+  { title: string; confirmLabel: string; body: string }
+> = {
+  cancel: {
+    title: "Cancel this shipment?",
+    confirmLabel: "Cancel shipment",
+    body: "GHN stops the waybill and will not collect the parcel. This cannot be undone — restarting the delivery means creating a new waybill.",
+  },
+  return: {
+    title: "Return this parcel to the seller?",
+    confirmLabel: "Return to seller",
+    body: "GHN routes the parcel back to the seller. The buyer will not receive it, and the leg cannot be reversed from this console.",
+  },
+};
+
 // Demo-only control. Off by default; turn on with NEXT_PUBLIC_GHN_DEMO_MODE=true
 // for a local/demo build. It drives the GHN status through the sanctioned
 // backend demo endpoint (which itself stays disabled in prod via its own flag),
@@ -312,6 +332,7 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
   const action = useShipmentAction();
   const [codOpen, setCodOpen] = useState(false);
   const [receiverOpen, setReceiverOpen] = useState(false);
+  const [confirming, setConfirming] = useState<ShipmentManualAction | null>(null);
 
   // GHN-ACT-01: `availableActions` is the single source of truth. The gateway
   // already trims it by permission *and* by order state, so the array encodes
@@ -399,7 +420,15 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
               ? "Syncing is not available for this shipment."
               : "No GHN order code yet — there is nothing to sync."}
           </p>
-        ) : null}
+        ) : (
+          // GHN-FAIL-NTF-01: sync is no longer a pure read — the first
+          // `delivery_fail` it records notifies the buyer, once per order.
+          // The response carries no flag for it, so say so at the button.
+          <p className="text-xs leading-5 text-ink-400">
+            Not read-only — if this sync records the order&apos;s first failed
+            delivery attempt, the buyer is notified once.
+          </p>
+        )}
 
         <div className="space-y-3 border-t border-line pt-3">
           {liveActions.map((item) => {
@@ -413,7 +442,7 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
                 variant={item.variant}
                 className="w-full justify-start"
                 disabled={action.isPending}
-                onClick={() => onAction(item.key)}
+                onClick={() => setConfirming(item.key)}
               >
                 <Icon name={item.icon} size={16} />
                 {busy ? "Working..." : item.label}
@@ -468,6 +497,38 @@ function ShipmentActions({ data }: { data: ShipmentDetailView }) {
         ) : null}
       </div>
 
+      {confirming ? (
+        <Modal
+          open
+          title={ACTION_CONFIRM[confirming].title}
+          subtitle={`Order #${data.orderId}${data.ghnOrderCode ? ` · ${data.ghnOrderCode}` : ""}`}
+          onClose={() => setConfirming(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirming(null)}>
+                Keep as is
+              </Button>
+              <Button
+                variant={confirming === "cancel" ? "danger" : "primary"}
+                onClick={() => {
+                  const actionKey = confirming;
+                  setConfirming(null);
+                  onAction(actionKey);
+                }}
+              >
+                {ACTION_CONFIRM[confirming].confirmLabel}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm leading-6 text-ink-700">
+            {ACTION_CONFIRM[confirming].body}
+          </p>
+          <p className="mt-3 text-xs text-ink-400">
+            Receiver: {data.receiver.name} · COD {fmtCod(data.codAmount)}
+          </p>
+        </Modal>
+      ) : null}
       {canUpdateCod ? (
         <UpdateCodModal
           open={codOpen}
@@ -554,6 +615,18 @@ function DemoStatusControl({
         Simulate a GHN status change for end-to-end demos. Routes through the
         backend demo endpoint — GHN is never called.
       </p>
+      {/*
+       * GHN-FAIL-NTF-01: "demo" stops at GHN. The status this writes is a real
+       * one, so picking "Delivery failed" sends the buyer the same real in-app
+       * notification a genuine failed attempt would — once per order, deduped
+       * on shipping history. Only the carrier call is simulated.
+       */}
+      {target === "delivery_fail" ? (
+        <p className="text-xs leading-5 text-amber-800">
+          Heads up: the buyer is notified for real. A first failed delivery
+          attempt sends them an in-app notification, demo or not.
+        </p>
+      ) : null}
       <Field label="Set GHN status" htmlFor="demo-ghn-status">
         <Select
           id="demo-ghn-status"
