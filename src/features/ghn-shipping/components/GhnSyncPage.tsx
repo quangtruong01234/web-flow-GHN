@@ -72,6 +72,18 @@ export function GhnSyncPage() {
           Syncing pulls the latest status from GHN through the backend. Webhooks
           are handled server-side and are not monitored from this console.
         </p>
+        {/*
+         * GHN-FAIL-NTF-01: sync stopped being a pure read. When the status it
+         * pulls is the order's first `delivery_fail`, the backend notifies the
+         * buyer (once per order, deduped on shipping history). Nothing in the
+         * response says whether it fired, so the operator has to be told here.
+         * This is also why the page syncs one order per click and never polls.
+         */}
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+          Not a read-only action. If a sync records the first failed delivery
+          attempt for an order, the buyer is notified. It fires once per order,
+          so syncing again is silent. Sync deliberately, one order at a time.
+        </p>
       </Card>
       <Card className="p-5">
         <p className="text-xs font-medium text-ink-400">Pending sync</p>

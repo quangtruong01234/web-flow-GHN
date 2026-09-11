@@ -129,6 +129,24 @@ describe("GhnSyncPage", () => {
     });
   });
 
+  // GHN-FAIL-NTF-01: syncing an order GHN has moved to `delivery_fail` notifies
+  // the buyer, so the page must not read as a pure refresh — and must keep
+  // syncing one order per click (no bulk control, no polling).
+  it("warns that syncing can notify the buyer", () => {
+    useAuthMock.mockReturnValue({
+      user: authUser("shipping_manager"),
+      ready: true,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
+
+    render(<GhnSyncPage />);
+
+    expect(screen.getByText(/not a read-only action/i)).toBeInTheDocument();
+    expect(screen.getByText(/the buyer is notified/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /sync all/i })).not.toBeInTheDocument();
+  });
+
   it("shows retryable copy for transient GHN sync failures", async () => {
     useAuthMock.mockReturnValue({
       user: authUser("shipping_manager"),
