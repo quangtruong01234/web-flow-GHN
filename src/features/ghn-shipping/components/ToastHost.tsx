@@ -16,19 +16,27 @@ const ACCENT_CLASS: Record<ToastKind, string> = {
   info: "bg-brand-50 text-brand-700",
 };
 
-/** Renders the active toast stack in a fixed bottom-right corner. */
+/**
+ * Renders the active toast stack in a fixed bottom-right corner.
+ *
+ * The container is always mounted and carries the live region itself. Returning
+ * `null` while empty inserted the region and its text in the same commit, which
+ * screen readers routinely miss — and sync/action results are announced nowhere
+ * else, so a missed toast is a silent outcome.
+ */
 export function ToastHost() {
   const { toasts, dismiss } = useToast();
 
-  if (toasts.length === 0) return null;
-
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2">
+    <div
+      className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2"
+      role="status"
+      aria-live="polite"
+    >
       {toasts.map((t) => (
         <div
           key={t.id}
           className="pointer-events-auto flex items-start gap-3 rounded-lg border border-line bg-white p-3 shadow-card"
-          role="status"
         >
           <span
             className={cn(
