@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { BackendStatusBanner } from "@/features/ghn-shipping/components/BackendStatusBanner";
 import { ToastHost } from "@/features/ghn-shipping/components/ToastHost";
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
+          <BackendStatusBanner />
           {children}
           <ToastHost />
         </Providers>
