@@ -24,6 +24,8 @@
 # TypeScript / build caches
 *.tsbuildinfo
 next-env.d.ts
+# SWC plugin cache, created by next build / next-jest
+/.swc
 
 # Testing / coverage
 /coverage
