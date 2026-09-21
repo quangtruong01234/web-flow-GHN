@@ -80,8 +80,15 @@ Treat every rule in those files as active project guidance.
   a banner names the window. `/settings` holds no inputs: it states the gateway base URL, the
   demo flag, "backend-only" for every carrier secret, and the no-auto-sync policy. See
   `handoff/CHANGELOG.md` 2026-09-11 and risks.md items 24-26.
+- The gateway runs on a cost-capped schedule (14:00-19:00 ICT), so "backend down" is a
+  designed state: `/gateway-health` (a server route handler — the gateway's `/health` is
+  outside its `api` prefix) feeds `useGatewayHealth`, which renders `BackendStatusBanner`
+  and polls only while offline. The banner links to `/demo`, a public read-only sample
+  console that lives **outside** `(app)` so `AuthGate` is untouched. See risks.md item 27.
+- Repo presentation: `README.md` (badges, architecture diagram, env table, "How AI is
+  used"), `docs/DEMO.md` (bilingual demo guide), and `LICENSE` (MIT).
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 112 tests / 17 suites), `npx.cmd playwright test` (12 specs).
+  `npm.cmd test` (Jest, 128 tests / 20 suites), `npx.cmd playwright test` (12 specs).
 
 ## Next task order
 

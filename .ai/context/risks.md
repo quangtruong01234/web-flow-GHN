@@ -204,3 +204,19 @@ is in `handoff/CHANGELOG.md` under the matching date.
     now states the policy. Rule: never render a control for a capability the console does
     not have — a placeholder with a plausible label is a specification someone will
     eventually satisfy.
+27. **A scheduled-off gateway looked like a broken app** - RESOLVED 2026-09-21. The gateway
+    runs 14:00-19:00 ICT to cap hosting cost, and outside that window every screen behind
+    `AuthGate` failed at login with a generic network error. Three pieces now cover it, and
+    each carries a constraint worth keeping:
+    - `src/app/gateway-health/route.ts` probes the gateway **server-side**, because the
+      gateway excludes `/health`, `/live`, `/ready`, `/metrics` from its `api` global prefix
+      — `/api/health` does not exist, so the `/api/:path*` rewrite cannot reach it. The
+      handler always answers `200` with a status body; it never fails the request.
+    - `useGatewayHealth` polls **only while offline** (60s) and only against this app's own
+      handler. It must never be pointed at a GHN route: under 23 a loop over the sync
+      endpoint messages real buyers.
+    - `/demo` renders `SAMPLE_SHIPMENTS` from `src/features/ghn-shipping/data/`. It sits
+      **outside** `(app)` so 22 stays intact — the guard was not loosened to let a
+      signed-out visitor in. The sample rows never enter the React Query cache, the screen
+      exposes no action control, and it labels itself as sample data; those three together
+      are what keep it clear of "the frontend never invents a status". Keep them.

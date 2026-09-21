@@ -10,6 +10,49 @@ context if relevant).
 
 ---
 
+### 2026-09-21 — Offline-aware shell, public `/demo`, and repo presentation
+
+Driven by `../.agent-local/TryBuy-repo-update-prompt.md` (make the three TryBuy repos
+readable by a recruiter in five minutes). No business logic, API contract, or schema
+changed; the only code touched is the new backend-offline handling. Opens risks item **27**.
+
+- **Backend-offline handling.** The gateway runs 14:00-19:00 ICT to cap hosting cost, so
+  outside that window the console failed at login with a generic network error.
+  `src/app/gateway-health/route.ts` probes the gateway from the server — its `/health` is
+  excluded from the gateway's `api` global prefix, so `/api/health` does not exist and the
+  `/api/:path*` rewrite cannot reach it — and always answers `200` with
+  `{status, checkedAt, httpStatus}`. `lib/gateway-health.ts` (never rejects; degrades to
+  `offline`) feeds `useGatewayHealth`, which polls **only while offline**, every 60s,
+  against this app's own handler — never a GHN route, per GHN-FAIL-NTF-01.
+  `BackendStatusBanner` mounts in the root layout, stays out of the sticky layers
+  `GhnAdminShell` already owns, renders nothing until the probe answers, and drops each
+  optional link whose env var is unset.
+- **Public `/demo` sample console.** `AuthGate` makes `(app)` unreachable with the backend
+  down, and risks 22 exists to keep that guard strict — so the sample screens live on a new
+  public route instead. `SampleConsole` renders `SAMPLE_SHIPMENTS`
+  (`features/ghn-shipping/data/`, app-side; the `testing/fixtures.ts` set stays test-only by
+  its own header) through the existing `ShipmentStatCards` / `ShipmentTimeline` and a new
+  `ShipmentRows` — the table extracted verbatim out of `ShipmentTable`, with a `getHref`
+  that returns `null` on `/demo` so nothing links into the authenticated console. No
+  queries, no mutations, no action controls, and the screen says it is sample data.
+  `LoginPage` links there unconditionally: a visitor without credentials has nowhere else
+  to go from that screen.
+- **Presentation.** `README.md` rewritten (CI/stack badges, sibling-repo table, live-demo
+  window, Mermaid architecture, key decisions, env table, testing, deployment incl. the
+  offline behaviour, "How AI is used", structure tree), `docs/DEMO.md` added (bilingual,
+  EN then VI: links, accounts, a four-step shipment flow, what to look at, and
+  screenshots of the offline state), MIT `LICENSE` added, `.env.example` gained the
+  optional `NEXT_PUBLIC_DEMO_GUIDE_URL` banner link, `.gitignore` gained `/.swc`. No
+  walkthrough video is planned, so neither the banner nor the docs offer one.
+- **Tests.** 16 new (`BackendStatusBanner` ×6, `lib/gateway-health` ×5, the route handler
+  ×5 — the last under a `@jest-environment node` docblock, since `next/server` needs the
+  Fetch API `Request`/`Response` jsdom lacks). Baseline moves to **128 tests / 20 suites**;
+  12 Playwright specs still pass. `fetchGatewayHealth` guards `AbortSignal.timeout`, which
+  jsdom lacks and older browsers may too — building the options object would otherwise
+  throw before `fetch` and report a healthy gateway as offline.
+
+---
+
 ### 2026-09-11 — Confirm step for destructive actions, honest KPI scope, real `/settings`
 
 Self-audit of the console against the live dev gateway (170 orders, `shipmgr_test`), not
