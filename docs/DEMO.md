@@ -12,7 +12,7 @@ in the backend repository's demo guide:
 
 | | |
 | --- | --- |
-| **Console** | the deployed URL for this repo |
+| **Console** | [web-flow-ghn.vercel.app](https://web-flow-ghn.vercel.app) — sample screen at [`/demo`](https://web-flow-ghn.vercel.app/demo) |
 | **Storefront** | [FE-React-Vite](https://github.com/quangtruong01234/FE-React-Vite) |
 | **Backend hours** | **14:00–19:00 ICT (UTC+7)** — the gateway is off outside this window to keep hosting cost near zero |
 | **Outside those hours** | open `/demo` on the console: a read-only sample screen that needs no backend and no sign-in. A banner on every page says the same thing and links there. |
@@ -90,7 +90,7 @@ nằm ở demo guide của repo backend:
 
 | | |
 | --- | --- |
-| **Console** | URL đã deploy của repo này |
+| **Console** | [web-flow-ghn.vercel.app](https://web-flow-ghn.vercel.app) — màn hình mẫu ở [`/demo`](https://web-flow-ghn.vercel.app/demo) |
 | **Storefront** | [FE-React-Vite](https://github.com/quangtruong01234/FE-React-Vite) |
 | **Giờ backend** | **14:00–19:00 ICT (UTC+7)** — ngoài khung giờ này gateway tắt để giữ chi phí hosting gần bằng 0 |
 | **Ngoài giờ đó** | mở `/demo` trên console: màn hình mẫu chỉ đọc, không cần backend, không cần đăng nhập. Banner trên mọi trang cũng nói điều này và dẫn tới đó. |

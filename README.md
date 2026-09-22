@@ -22,15 +22,19 @@ It is one of three repositories in the TryBuy project and talks to exactly one o
 
 ## Live demo
 
+**[web-flow-ghn.vercel.app](https://web-flow-ghn.vercel.app)** — deployed from `main` by the
+CI workflow below.
+
 The gateway runs **14:00–19:00 ICT (UTC+7)** to keep hosting cost near zero. Outside that
 window the console detects it, explains it in a banner on every page, and points at a
 public, read-only walkthrough that needs no backend and no sign-in:
 
-- **Sample console:** `/demo` — the real components rendered against static sample rows.
+- **Sample console:** [`/demo`](https://web-flow-ghn.vercel.app/demo) — the real components
+  rendered against static sample rows. Open any time; it never calls the backend.
 - **Demo guide:** [`docs/DEMO.md`](docs/DEMO.md) — accounts, a four-step shipment flow, and
   what to look at while clicking through.
 
-Deployment URLs are set per environment; see [Deployment](#deployment).
+Signing in needs an account and the gateway; see [Accounts](docs/DEMO.md#accounts).
 
 ## Screenshots
 
