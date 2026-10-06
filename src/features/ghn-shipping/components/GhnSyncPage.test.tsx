@@ -174,4 +174,27 @@ describe("GhnSyncPage", () => {
       );
     });
   });
+
+  it("marks a syncable order with no GHN update in 24h without syncing it", () => {
+    useAuthMock.mockReturnValue({
+      user: authUser("shipping_manager"),
+      ready: true,
+      login: jest.fn(),
+      logout: jest.fn(),
+    });
+    useShipmentListMock.mockReturnValue({
+      data: shipmentListView({
+        items: [shipmentListItem({ lastSyncedAt: "2026-10-04T08:00:00Z" })],
+      }),
+      dataUpdatedAt: Date.parse("2026-10-06T08:00:00Z"),
+      isPending: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useShipmentList>);
+
+    render(<GhnSyncPage />);
+
+    expect(screen.getByText("No GHN update in 24h+")).toBeInTheDocument();
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
 });

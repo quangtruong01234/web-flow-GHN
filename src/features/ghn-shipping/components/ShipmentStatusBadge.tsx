@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/ui/Badge";
 import {
+  GHN_UPDATE_STALE_LABEL,
   ghnMeta,
   localMeta,
   rawGhnLabel,
@@ -34,4 +35,14 @@ export function GhnStatusBadge({
 
 export function LocalStatusBadge({ status }: { status: LocalStatus }) {
   return <StatusBadge meta={localMeta(status)} />;
+}
+
+/** Hint beside a GHN pill: nothing new has come from GHN in 24h. Never a sync. */
+export function GhnUpdateStaleTag() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-amber-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+      {GHN_UPDATE_STALE_LABEL}
+    </span>
+  );
 }

@@ -7,25 +7,31 @@ import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/context/ToastContext";
 import { useShipmentList, useSyncShipment } from "../hooks/useShipments";
 import { fmtDateTime } from "../lib/shipment-formatters";
-import { rawGhnLabel } from "../lib/shipment-status";
+import {
+  isGhnUpdateStale,
+  rawGhnLabel,
+  TERMINAL_GHN_STATUSES,
+} from "../lib/shipment-status";
 import { syncErrorCopy } from "../lib/mutation-errors";
 import type { ShipmentListItem } from "../api/types";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
-import { GhnStatusBadge } from "./ShipmentStatusBadge";
+import { GhnStatusBadge, GhnUpdateStaleTag } from "./ShipmentStatusBadge";
 
 const SYNC_LIMIT = 50;
-const TERMINAL: ReadonlyArray<string> = ["delivered", "returned", "cancelled"];
 
 // GHN-ACT-01: `canSync` mirrors `availableActions.includes("sync")`, which the
 // gateway already trims by permission and order state — no extra role check.
 function isPendingSync(item: ShipmentListItem): boolean {
-  return item.canSync && !(item.ghnStatus !== null && TERMINAL.includes(item.ghnStatus));
+  return (
+    item.canSync &&
+    !(item.ghnStatus !== null && TERMINAL_GHN_STATUSES.includes(item.ghnStatus))
+  );
 }
 
 export function GhnSyncPage() {
   const { push } = useToast();
-  const { data, isPending, isError, refetch } = useShipmentList({
+  const { data, dataUpdatedAt, isPending, isError, refetch } = useShipmentList({
     page: 1,
     limit: SYNC_LIMIT,
   });
@@ -153,6 +159,11 @@ export function GhnSyncPage() {
                     <p className="mt-1 text-xs text-ink-400">
                       {item.ghnOrderCode} · last synced {fmtDateTime(item.lastSyncedAt)}
                     </p>
+                    {dataUpdatedAt && isGhnUpdateStale(item, dataUpdatedAt) ? (
+                      <p className="mt-1">
+                        <GhnUpdateStaleTag />
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-3">
                     <GhnStatusBadge status={item.ghnStatus} raw={item.rawGhnStatus} />

@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { AnalyticsPanel } from "./AnalyticsPanel";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
+import { NeedsAttentionCard } from "./NeedsAttention";
 import { ShipmentStatCards } from "./ShipmentStatCards";
 import { GhnStatusBadge, LocalStatusBadge } from "./ShipmentStatusBadge";
 
@@ -62,6 +63,8 @@ function ShipmentOverview() {
   return (
     <div className="space-y-6">
       <ShipmentStatCards items={items} total={data.total} />
+
+      <NeedsAttentionCard items={items} total={data.total} />
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Card>

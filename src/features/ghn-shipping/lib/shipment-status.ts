@@ -1,3 +1,4 @@
+import type { GhnStatusFilter } from "../api/types";
 import type { GhnStatus, LocalStatus } from "../types";
 
 export interface StatusMeta {
@@ -184,4 +185,91 @@ export function ghnStatusDistribution(
     count: items.filter((item) => item.ghnStatus === status).length,
     meta: ghnMeta(status),
   }));
+}
+
+/**
+ * The GHN statuses an operator works as a queue: a failed delivery attempt and
+ * the three GHN-FAIL-01 statuses with no local equivalent. Each is a valid
+ * `ghnStatus` list filter, so a quick filter is one request — never fan out.
+ */
+export const NEEDS_ATTENTION_GHN_STATUSES = [
+  "delivery_fail",
+  "exception",
+  "damage",
+  "lost",
+] as const satisfies ReadonlyArray<GhnStatusFilter>;
+
+export type NeedsAttentionStatus = (typeof NEEDS_ATTENTION_GHN_STATUSES)[number];
+
+/** Label + colour for a needs-attention status (a `GhnStatus` or a raw one). */
+export function needsAttentionMeta(status: NeedsAttentionStatus): StatusMeta {
+  return status === "delivery_fail"
+    ? ghnMeta(status)
+    : { ...ATTENTION_GHN_META, label: rawGhnLabel(status) };
+}
+
+/**
+ * How many orders are *currently* in each needs-attention status. Reads the raw
+ * status first — `exception`/`damage`/`lost` are not `GhnStatus` values, so
+ * `ghnStatus` is null for them.
+ */
+export function needsAttentionCounts(
+  items: ReadonlyArray<{ ghnStatus: GhnStatus | null; rawGhnStatus: string | null }>,
+): Record<NeedsAttentionStatus, number> {
+  const counts: Record<NeedsAttentionStatus, number> = {
+    delivery_fail: 0,
+    exception: 0,
+    damage: 0,
+    lost: 0,
+  };
+  for (const item of items) {
+    const current = (item.rawGhnStatus ?? item.ghnStatus ?? "").trim().toLowerCase();
+    const match = NEEDS_ATTENTION_GHN_STATUSES.find((status) => status === current);
+    if (match) counts[match] += 1;
+  }
+  return counts;
+}
+
+/** GHN statuses after which the carrier sends nothing more for the order. */
+export const TERMINAL_GHN_STATUSES: ReadonlyArray<GhnStatus> = [
+  "delivered",
+  "returned",
+  "cancelled",
+];
+
+/** Local statuses where the order is closed on TryBuy's side. */
+const CLOSED_LOCAL_STATUSES: ReadonlyArray<LocalStatus> = ["completed", "cancelled", "refunded"];
+
+export const GHN_UPDATE_STALE_MS = 24 * 60 * 60 * 1000;
+export const GHN_UPDATE_STALE_LABEL = "No GHN update in 24h+";
+
+/**
+ * True when a still-open order is moving at GHN but nothing has reached the
+ * backend for 24h. `lastSyncedAt` is the newest `shipping_history` row —
+ * webhook, sync, action or demo — so this means "no GHN update", not "not
+ * synced". With no row yet it measures from `updatedAt`, so a waybill created
+ * minutes ago is not flagged.
+ *
+ * Orders closed locally are skipped: in practice most closed orders keep a GHN
+ * code with no recent event, and flagging them buried the open ones.
+ *
+ * `asOfMs` is when the list was fetched, not a live clock: the hint describes
+ * the data on screen. A hint only — it must never trigger a sync (GHN-FAIL-NTF-01).
+ */
+export function isGhnUpdateStale(
+  item: {
+    ghnOrderCode: string | null;
+    ghnStatus: GhnStatus | null;
+    localStatus: LocalStatus;
+    lastSyncedAt: string | null;
+    updatedAt: string;
+  },
+  asOfMs: number,
+): boolean {
+  if (!item.ghnOrderCode) return false;
+  if (CLOSED_LOCAL_STATUSES.includes(item.localStatus)) return false;
+  if (item.ghnStatus !== null && TERMINAL_GHN_STATUSES.includes(item.ghnStatus)) return false;
+  const lastMs = Date.parse(item.lastSyncedAt ?? item.updatedAt);
+  if (Number.isNaN(lastMs)) return false;
+  return asOfMs - lastMs >= GHN_UPDATE_STALE_MS;
 }

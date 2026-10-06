@@ -4,8 +4,13 @@ import {
   fmtDateTime,
   fmtFeeNullable,
 } from "../lib/shipment-formatters";
+import { isGhnUpdateStale } from "../lib/shipment-status";
 import type { ShipmentListItem } from "../api/types";
-import { GhnStatusBadge, LocalStatusBadge } from "./ShipmentStatusBadge";
+import {
+  GhnStatusBadge,
+  GhnUpdateStaleTag,
+  LocalStatusBadge,
+} from "./ShipmentStatusBadge";
 
 /**
  * The shipment grid with no data source of its own.
@@ -17,13 +22,18 @@ import { GhnStatusBadge, LocalStatusBadge } from "./ShipmentStatusBadge";
  *
  * `getHref` returning `null` renders the order id as plain text, which is how
  * `/demo` keeps its rows from linking into the authenticated console.
+ *
+ * `staleAsOf` (when the list was fetched) turns on the "no GHN update" hint.
+ * `/demo` omits it: a frozen sample date would flag every row.
  */
 export function ShipmentRows({
   items,
   getHref = (item) => `/shipments/${item.orderId}`,
+  staleAsOf,
 }: {
   items: ShipmentListItem[];
   getHref?: (item: ShipmentListItem) => string | null;
+  staleAsOf?: number;
 }) {
   return (
     <div className="scroll-thin overflow-x-auto">
@@ -67,7 +77,12 @@ export function ShipmentRows({
                   <LocalStatusBadge status={item.localStatus} />
                 </td>
                 <td className="px-5 py-4">
-                  <GhnStatusBadge status={item.ghnStatus} raw={item.rawGhnStatus} />
+                  <div className="flex flex-col items-start gap-1.5">
+                    <GhnStatusBadge status={item.ghnStatus} raw={item.rawGhnStatus} />
+                    {staleAsOf && isGhnUpdateStale(item, staleAsOf) ? (
+                      <GhnUpdateStaleTag />
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-5 py-4 text-ink-700">
                   {fmtCodNullable(item.codAmount)}

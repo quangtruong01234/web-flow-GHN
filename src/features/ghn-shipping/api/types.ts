@@ -22,16 +22,19 @@ import type { GhnStatus, LocalStatus } from "../types";
 // ---------------------------------------------------------------------------
 
 /** Backend local order status enum (`OrderStatus`). Distinct from `LocalStatus`. */
-export type BackendOrderStatus =
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
-  | "delivering"
-  | "completed"
-  | "canceled"
-  | "return_requested"
-  | "refunded";
+export const BACKEND_ORDER_STATUS_VALUES = [
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "delivering",
+  "completed",
+  "canceled",
+  "return_requested",
+  "refunded",
+] as const;
+
+export type BackendOrderStatus = (typeof BACKEND_ORDER_STATUS_VALUES)[number];
 
 /**
  * GHN status values the list endpoint accepts for `?ghnStatus=` (GHN-ENUM-01,

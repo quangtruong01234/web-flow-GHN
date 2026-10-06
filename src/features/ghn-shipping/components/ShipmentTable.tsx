@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { useShipmentList } from "../hooks/useShipments";
 import { isApiError } from "@/lib/api";
-import type {
-  BackendOrderStatus,
-  GhnStatusFilter,
-  ShipmentListParams,
-} from "../api/types";
+import type { BackendOrderStatus, GhnStatusFilter } from "../api/types";
+import {
+  buildShipmentListSearch,
+  parseShipmentListSearch,
+  toShipmentListParams,
+  type ShipmentListFilters,
+} from "../lib/shipment-list-query";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
+import { EVER_RECORDED_NOTE, NeedsAttentionChips } from "./NeedsAttention";
 import { ShipmentRows } from "./ShipmentRows";
 
 const PAGE_SIZE = 20;
@@ -43,46 +47,80 @@ const GHN_STATUS_OPTIONS: GhnStatusFilter[] = [
   "waiting_to_return",
   "returned",
   "cancel",
+  "exception",
+  "damage",
+  "lost",
 ];
 
 export function ShipmentTable() {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"all" | BackendOrderStatus>("all");
-  const [ghnStatus, setGhnStatus] = useState<"all" | GhnStatusFilter>("all");
-  const [hasGhnCode, setHasGhnCode] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [page, setPage] = useState(1);
+  // `useSearchParams` needs a Suspense boundary or the static build bails out.
+  return (
+    <Suspense
+      fallback={
+        <Card>
+          <div className="p-8 text-center text-sm text-ink-500">Loading shipments...</div>
+        </Card>
+      }
+    >
+      <ShipmentTableContent />
+    </Suspense>
+  );
+}
+
+function ShipmentTableContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // The URL is the filter state: Back from a detail page and a shared link both
+  // reopen the same view. Invalid values in a hand-edited link are dropped.
+  const filters = useMemo(() => parseShipmentListSearch(searchParams), [searchParams]);
+
+  // `replace`, not `push`: a filter tweak is not a page the operator wants to
+  // step back through. Any filter change returns to the first page.
+  const applyFilters = useCallback(
+    (next: Partial<ShipmentListFilters>) => {
+      const query = buildShipmentListSearch({ ...filters, page: 1, ...next });
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [filters, pathname, router],
+  );
+
+  // The search box keeps its own keystrokes; the URL only gets the debounced value.
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const lastPushedSearch = useRef(filters.search);
+
+  // Back/forward changed the URL under us — show that search in the box.
+  useEffect(() => {
+    if (filters.search !== lastPushedSearch.current) {
+      lastPushedSearch.current = filters.search;
+      setSearchInput(filters.search);
+    }
+  }, [filters.search]);
 
   // Debounce the free-text search so we don't refetch on every keystroke.
   useEffect(() => {
-    const id = setTimeout(() => setSearch(searchInput.trim()), 350);
+    const next = searchInput.trim();
+    if (next === filters.search) return;
+    const id = setTimeout(() => {
+      lastPushedSearch.current = next;
+      applyFilters({ search: next });
+    }, 350);
     return () => clearTimeout(id);
-  }, [searchInput]);
-
-  // Any filter change resets to the first page.
-  useEffect(() => {
-    setPage(1);
-  }, [search, status, ghnStatus, hasGhnCode, dateFrom, dateTo]);
+  }, [searchInput, filters.search, applyFilters]);
 
   // A cleared filter must be OMITTED, not sent empty: `?status=` is now a 400
   // (GHN-ENUM-01). `undefined` values are dropped by the query builder.
-  const params = useMemo<ShipmentListParams>(
-    () => ({
-      page,
-      limit: PAGE_SIZE,
-      search: search || undefined,
-      status: status === "all" ? undefined : status,
-      ghnStatus: ghnStatus === "all" ? undefined : ghnStatus,
-      hasGhnCode: hasGhnCode ? true : undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-    }),
-    [page, search, status, ghnStatus, hasGhnCode, dateFrom, dateTo],
-  );
+  const params = useMemo(() => toShipmentListParams(filters, PAGE_SIZE), [filters]);
 
-  const { data, error, isPending, isError, isFetching, refetch } =
+  // A link may carry a valid GHN status outside the common set — list it so the
+  // select shows what is actually applied.
+  const ghnStatusOptions =
+    filters.ghnStatus && !GHN_STATUS_OPTIONS.includes(filters.ghnStatus)
+      ? [...GHN_STATUS_OPTIONS, filters.ghnStatus]
+      : GHN_STATUS_OPTIONS;
+
+  const { data, dataUpdatedAt, error, isPending, isError, isFetching, refetch } =
     useShipmentList(params);
 
   // A 400 means the gateway rejected a filter value and names the accepted set —
@@ -117,6 +155,13 @@ export function ShipmentTable() {
       />
 
       <div className="space-y-4 border-b border-line p-5">
+        <div className="space-y-1.5">
+          <NeedsAttentionChips active={filters.ghnStatus} />
+          {filters.ghnStatus ? (
+            <p className="text-xs text-ink-500">{EVER_RECORDED_NOTE}</p>
+          ) : null}
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr]">
           <Field label="Search order ID, GHN code, or address">
             <div className="relative">
@@ -131,9 +176,14 @@ export function ShipmentTable() {
           </Field>
           <Field label="Local status">
             <Select
-              value={status}
+              value={filters.status ?? "all"}
               onChange={(event) =>
-                setStatus(event.target.value as "all" | BackendOrderStatus)
+                applyFilters({
+                  status:
+                    event.target.value === "all"
+                      ? null
+                      : (event.target.value as BackendOrderStatus),
+                })
               }
             >
               <option value="all">All local statuses</option>
@@ -146,13 +196,18 @@ export function ShipmentTable() {
           </Field>
           <Field label="GHN status">
             <Select
-              value={ghnStatus}
+              value={filters.ghnStatus ?? "all"}
               onChange={(event) =>
-                setGhnStatus(event.target.value as "all" | GhnStatusFilter)
+                applyFilters({
+                  ghnStatus:
+                    event.target.value === "all"
+                      ? null
+                      : (event.target.value as GhnStatusFilter),
+                })
               }
             >
               <option value="all">All GHN statuses</option>
-              {GHN_STATUS_OPTIONS.map((value) => (
+              {ghnStatusOptions.map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -165,22 +220,22 @@ export function ShipmentTable() {
           <Field label="Created from">
             <Input
               type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
+              value={filters.dateFrom}
+              onChange={(event) => applyFilters({ dateFrom: event.target.value })}
             />
           </Field>
           <Field label="Created to">
             <Input
               type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
+              value={filters.dateTo}
+              onChange={(event) => applyFilters({ dateTo: event.target.value })}
             />
           </Field>
           <label className="flex items-end gap-2 pb-2 text-sm font-medium text-ink-700">
             <input
               type="checkbox"
-              checked={hasGhnCode}
-              onChange={(event) => setHasGhnCode(event.target.checked)}
+              checked={filters.hasGhnCode}
+              onChange={(event) => applyFilters({ hasGhnCode: event.target.checked })}
             />
             Only with GHN code
           </label>
@@ -213,18 +268,18 @@ export function ShipmentTable() {
         </div>
       ) : (
         <>
-          <ShipmentRows items={items} />
+          <ShipmentRows items={items} staleAsOf={dataUpdatedAt} />
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4">
             <p className="text-xs text-ink-400">
-              Page {data?.page ?? page} of {totalPages} · {total} total
+              Page {data?.page ?? filters.page} of {totalPages} · {total} total
             </p>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={page <= 1 || isFetching}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={filters.page <= 1 || isFetching}
+                onClick={() => applyFilters({ page: Math.max(1, filters.page - 1) })}
               >
                 <Icon name="chevronLeft" size={15} />
                 Previous
@@ -233,7 +288,7 @@ export function ShipmentTable() {
                 size="sm"
                 variant="secondary"
                 disabled={!data?.hasNext || isFetching}
-                onClick={() => setPage((current) => current + 1)}
+                onClick={() => applyFilters({ page: filters.page + 1 })}
               >
                 Next
                 <Icon name="chevronRight" size={15} />
