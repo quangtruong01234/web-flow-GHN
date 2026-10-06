@@ -87,8 +87,19 @@ Treat every rule in those files as active project guidance.
   console that lives **outside** `(app)` so `AuthGate` is untouched. See risks.md item 27.
 - Repo presentation: `README.md` (badges, architecture diagram, env table, "How AI is
   used"), `docs/DEMO.md` (bilingual demo guide), and `LICENSE` (MIT).
+- Operator ergonomics (tasks 7-10, `handoff/CHANGELOG.md` 2026-10-06):
+  - `/shipments` filters live in the URL (`lib/shipment-list-query.ts`); defaults and
+    invalid values never reach the gateway query.
+  - "Needs attention" links (`delivery_fail` / `exception` / `damage` / `lost`) sit on
+    `/dashboard` and above the list. The tile counts the *current* status; the list matches
+    every order that *ever recorded* it, and both say so.
+  - `BackendStatusBanner` warns from 18:45 ICT that the gateway stops at 19:00. It uses the
+    client clock and sends no request.
+  - Open orders with no GHN update for 24h+ carry a hint on `/shipments` and `/sync`. It is
+    a hint only and never syncs.
+  - None of these adds a loop over a GHN route (risks.md item 23).
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 128 tests / 20 suites), `npx.cmd playwright test` (12 specs).
+  `npm.cmd test` (Jest, 171 tests / 24 suites), `npx.cmd playwright test` (21 specs).
 
 ## Next task order
 
@@ -107,6 +118,34 @@ Treat every rule in those files as active project guidance.
    - UI is hidden unless `NEXT_PUBLIC_GHN_DEMO_MODE=true`.
    - Backend still requires `GHN_DEMO_ENDPOINTS_ENABLED=true`; disabled environments return
      `403` and should be shown as "demo not enabled", not treated as authz failure.
+7. **Done** - URL-backed shipment filters (`/shipments`).
+   - Search, local status, GHN status, created from/to, "only with GHN code" and page live in
+     the query string (`lib/shipment-list-query.ts` + `router.replace`), so Back from a detail
+     page and a shared link both restore the same view.
+   - A cleared or default filter is omitted from the URL *and* the gateway query
+     (GHN-ENUM-01); an unknown enum, malformed date or bad page in a hand-edited URL is
+     dropped, not sent. See `handoff/CHANGELOG.md` 2026-10-06.
+8. **Done** - "Needs attention" quick filters (`/dashboard`, `/shipments`).
+   - `NeedsAttentionCard` on `/dashboard` and `NeedsAttentionChips` above the `/shipments`
+     filters link `delivery_fail` / `exception` / `damage` / `lost` to
+     `/shipments?ghnStatus=…` (one link = one request; never a request per status).
+   - The card counts the **current** status in the fetched window (`+` when truncated,
+     risks 25); the list filter matches every order that **ever recorded** it, so both
+     surfaces say so (`EVER_RECORDED_NOTE`). See `handoff/CHANGELOG.md` 2026-10-06.
+9. **Done** - Gateway closing-soon notice (all pages).
+   - From 18:45 ICT until 19:00 ICT, while the probe says `online`, `BackendStatusBanner`
+     warns that the gateway is scheduled to stop and to finish any edit in progress
+     (`lib/gateway-schedule.ts` + `useGatewayClosingSoon`). Client clock only — a 30 s local
+     timer, no extra request, no poll on any GHN route. The offline notice wins once the
+     probe fails. See `handoff/CHANGELOG.md` 2026-10-06.
+10. **Done** - "No recent GHN update" marker (`/shipments`, `/sync`).
+    - `isGhnUpdateStale` flags an order with a GHN code, not in a terminal GHN status, **not
+      closed locally** (completed / cancelled / refunded), whose `lastSyncedAt` — or
+      `updatedAt` when no history row exists — is 24h+ older than the list fetch
+      (`dataUpdatedAt`, never a live clock). The copy says "no GHN update", not "not
+      synced": `lastSyncedAt` is the newest `shipping_history` row of any source.
+    - A hint only: it never triggers a sync (risks 23). `/demo` passes no fetch time, so its
+      frozen sample rows are never marked. See `handoff/CHANGELOG.md` 2026-10-06.
 
 ## Context Map - read the relevant file when the task touches it
 

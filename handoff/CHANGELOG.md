@@ -10,6 +10,122 @@ context if relevant).
 
 ---
 
+### 2026-10-06 — `/sweep`: risks numbering collision fixed; backlog otherwise clear
+
+Docs only. Both backlog sources read in full: `frontend-handoff-ghn.md` **Open** is empty
+(OQ-2 already answered and moved to Done), and every open `risks.md` item is a standing rule
+rather than a pending fix.
+
+- **Two risks were numbered 27.** `/history` is not an audit log (Open, added 2026-09-11) and
+  the scheduled-off gateway (Resolved, added 2026-09-21) shared the number. The gateway item is
+  the one cited (`.ai/project.md`, `src/lib/gateway-schedule.ts`, the 2026-09-21 entry below),
+  so it keeps 27. The uncited `/history` item becomes **28**, with a note recording the old
+  number. The risks header now says a new item takes the next number after the highest one in
+  *either* section.
+- **Standing rules re-checked by grep:** no `shipper` role (5), no `3002` (8), no `support.js`
+  or `.dc.html` import (11), demo UI still behind `NEXT_PUBLIC_GHN_DEMO_MODE` (12), no
+  `ghnDetail.raw.<key>` read (18), and the only interval polls this app's own `/gateway-health`
+  plus the client-clock closing-soon timer, never a GHN route (23). `/history` still makes one
+  list request with no per-order history fan-out (28).
+
+### 2026-10-06 — Operator ergonomics: URL filters, needs-attention links, closing-soon notice, stale-update hint
+
+Driven by `/sweep propose` (tasks 7-10 in `.ai/project.md`). FE only; no API contract,
+schema or backend change.
+
+- **URL-backed shipment filters (task 7).** `/shipments` kept every filter in `useState`, so
+  Back from a detail page reset the view and a filtered list could not be shared.
+  `features/ghn-shipping/lib/shipment-list-query.ts` now owns the filter shape:
+  `parseShipmentListSearch` (drops an unknown `status`/`ghnStatus`, a non-`YYYY-MM-DD` date
+  and a page below 2 — a hand-edited link never reaches the gateway as a guaranteed 400),
+  `buildShipmentListSearch` (omits every default, so GHN-ENUM-01 still holds),
+  `toShipmentListParams`, and `shipmentListHref` for links into the list. The URL keys reuse
+  the gateway's param names. `ShipmentTable` derives its filters from `useSearchParams`,
+  writes them with `router.replace(..., { scroll: false })` (a filter tweak is not a history
+  entry), keeps the search box local and debounced, and re-syncs it on Back/Forward. The
+  Suspense boundary `useSearchParams` needs lives inside `ShipmentTable`, so the route file
+  stays thin. A link may carry a valid GHN status outside the select's common eight; it is
+  appended to the options so the select shows what is applied. `BackendOrderStatus` is now
+  derived from a new `BACKEND_ORDER_STATUS_VALUES` array, which the parser validates
+  against.
+  Tests: `shipment-list-query.test.ts` (10), `ShipmentTable.test.tsx` (+5, now mocks
+  `next/navigation`), `e2e/shipment-filters.spec.ts` (filter → detail → Back keeps it; a
+  shared link restores valid filters and drops an unknown one). Runtime-verified against the
+  local gateway as `logistics_test`: `?ghnStatus=delivered` returned 4 rows, Back from
+  `ord_516a3e38816611f1` restored the URL and the select, and
+  `?ghnStatus=bogus&status=completed` sent only `status=completed` (200).
+- **"Needs attention" quick filters (task 8).** The four GHN statuses an operator has to act
+  on (`delivery_fail`, and the GHN-FAIL-01 red-pill trio `exception` / `damage` / `lost`)
+  had no shortcut. `components/NeedsAttention.tsx` adds `NeedsAttentionCard` on `/dashboard`
+  (one tile per status, linking through `shipmentListHref`) and `NeedsAttentionChips` above
+  the `/shipments` filters (the applied one gets `aria-current`). `lib/shipment-status.ts`
+  gains `NEEDS_ATTENTION_GHN_STATUSES`, `needsAttentionMeta` and `needsAttentionCounts`
+  (reads `rawGhnStatus` first, because the trio is not a `GhnStatus`). The tile counts the
+  **current** status in the fetched window and carries `+` when it is truncated (risks 25);
+  the list filter is a `shipping_history` subquery and matches every order that **ever
+  recorded** the status, so both surfaces print `EVER_RECORDED_NOTE` — on the list only
+  while a GHN status is applied. The note sits outside the select's `Field`, whose label
+  would otherwise absorb it into the select's accessible name. The GHN status select now
+  also lists the trio. One link is one request; nothing fans out per status.
+  Tests: `NeedsAttention.test.tsx` (5), `shipment-status.test.ts` (+2),
+  `ShipmentTable.test.tsx` (+2), `e2e/shipment-filters.spec.ts` (+1: a dashboard tile
+  opens the filtered list). Runtime-verified in Chrome DevTools against the local gateway as
+  `logistics_test`: the card read "Delivery failed 4+" (window 100 of 181, matching the
+  "Failed deliveries 4+" stat card), the tile opened `/shipments?ghnStatus=delivery_fail`
+  with the chip `aria-current`, and the list sent one
+  `GET .../ghn/orders?page=1&limit=20&ghnStatus=delivery_fail` (200, 6 orders: two still
+  `Shipping`, four whose order has since been cancelled).
+- **Gateway closing-soon notice (task 9).** The offline banner only appeared *after* the
+  19:00 ICT stop, so an operator mid-way through a COD or receiver edit lost it to a bare
+  network error. `src/lib/gateway-schedule.ts` (`minutesUntilGatewayClose`, computed from
+  UTC ms + 7h, so the host zone never matters) and `src/hooks/useGatewayClosingSoon.ts` (a
+  30s local timer that starts at `null`, so server and first client render agree) feed
+  `BackendStatusBanner`: from 18:45 ICT, while the probe says `online`, it reads "Backend is
+  scheduled to stop at 19:00 ICT (UTC+7), in about N min. Finish any edit in progress". It
+  stays silent while the probe is `unknown`, and the offline notice replaces it once the
+  probe fails. Client clock only — no request, nothing near a GHN route (GHN-FAIL-NTF-01).
+  Tests: `gateway-schedule.test.ts` (5, incl. instants written in UTC and −04:00),
+  `useGatewayClosingSoon.test.ts` (2, fake timers; asserts `fetch` is never called),
+  `BackendStatusBanner.test.tsx` (+4), `e2e/gateway-closing-soon.spec.ts` (3, frozen
+  clock: 18:52 warns "in about 8 min" with no GHN call, 16:00 is quiet, offline at 18:59:30
+  shows only the offline notice). Runtime-verified in Chrome DevTools against the local
+  gateway (online) with the browser clock shifted to 18:52 ICT: `/dashboard` showed the
+  notice, and the page sent only `gateway-health`, `/api/user/me`, the orders and analytics
+  reads — no console errors.
+- **"No recent GHN update" hint (task 10).** Nothing told an operator which in-flight order
+  had stopped hearing from GHN. `lib/shipment-status.ts` adds `isGhnUpdateStale`,
+  `TERMINAL_GHN_STATUSES` (now also used by `GhnSyncPage` in place of its own copy) and
+  `GHN_UPDATE_STALE_LABEL`. `GhnUpdateStaleTag` renders under the GHN pill in `ShipmentRows`
+  and under the waybill line on `/sync`.
+  - **What it flags:** an order with a GHN code that is not in a terminal GHN status, is not
+    closed locally (completed / cancelled / refunded), and has had no GHN update for 24h+.
+  - **What it measures from:** `lastSyncedAt`, the newest `shipping_history` row of any
+    source. With no row, it falls back to `updatedAt`. The copy says "no GHN update", not
+    "not synced".
+  - **Reference time:** the list's `dataUpdatedAt`, never a live clock in render.
+  - **`/demo`:** `ShipmentRows` only marks rows when given that fetch time, and `/demo`
+    passes none, so its frozen sample rows are never marked.
+  - **No sync:** the hint is text only and triggers nothing (GHN-FAIL-NTF-01).
+  - **Rule changed after the runtime check:** the first version only excluded terminal GHN
+    statuses. On the real gateway it flagged all 20 rows of
+    `/shipments?hasGhnCode=true`, because 57 of the 75 GHN-coded orders are closed locally,
+    and most have no GHN history at all. Adding the local-closed skip and the `updatedAt`
+    fallback brought it to 6 of 20, all locally `Shipping` with no GHN event for days.
+
+  Tests:
+  - `shipment-status.test.ts` (+6)
+  - `ShipmentTable.test.tsx` (+1: only the quiet row is marked)
+  - `GhnSyncPage.test.tsx` (+1: marked, and `mutate` is never called)
+  - `e2e/ghn-update-stale.spec.ts` (3, frozen clock): `/shipments` marks the stale row but
+    not the fresh or closed ones; `/sync` marks it and sends no write; `/demo` marks nothing.
+
+  Runtime-verified in Chrome DevTools as `logistics_test`:
+  - 6 hints, each on one line (`whitespace-nowrap` added after a wrapped first render).
+  - Network: only `gateway-health`, `/me` and the list read.
+  - `/demo`: 6 rows, 0 hints.
+
+---
+
 ### 2026-09-21 — Offline-aware shell, public `/demo`, and repo presentation
 
 Driven by `../.agent-local/TryBuy-repo-update-prompt.md` (make the three TryBuy repos

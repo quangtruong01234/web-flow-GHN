@@ -87,14 +87,15 @@ status are gateway-backed. Start the backend gateway and this app
 | ---------------------- | ------------------------------------------------------------------------------ |
 | `/login`               | Login form renders; `logistics_test` and `shipmgr_test` authenticate.          |
 | `/`                    | Authenticated user redirects to `/dashboard`; unauthenticated user to `/login`. |
-| `/dashboard`           | Stat cards + status distribution render from gateway shipment data; when the queue exceeds the fetched page, counts show `+` and the window banner names it. |
-| `/shipments`           | Gateway table renders; search/status filters work; rows link to detail.        |
+| `/dashboard`           | Stat cards + status distribution render from gateway shipment data; when the queue exceeds the fetched page, counts show `+` and the window banner names it. Each "Needs attention" tile opens `/shipments?ghnStatus=…`. |
+| `/shipments`           | Gateway table renders; search/status filters work and land in the URL; Back from a detail page keeps them; the applied "Needs attention" chip is highlighted and the ever-recorded note shows; rows link to detail. Only open orders that have a GHN code and have been quiet for 24h+ show "No GHN update in 24h+"; closed and terminal rows never show it. |
 | `/shipments/[orderId]` | Detail + timeline render; sync/cancel/return/COD/receiver availability matches role/`availableActions`; cancel/return open a confirm dialog and send nothing until it is accepted; demo controls appear only when enabled. |
-| `/sync`                | `shipmgr_test` can sync eligible rows; `logistics_test` cannot.                |
+| `/sync`                | `shipmgr_test` can sync eligible rows; `logistics_test` cannot. Quiet rows carry the 24h+ hint, and nothing is sent until Sync is clicked. |
 | `/history`             | Shipping history list renders from gateway-backed data.                        |
 | `/settings`            | Integration facts render read-only (gateway URL, demo flag, "backend-only" secrets, no-auto-sync policy); no inputs, no save button. |
 | `/403`                 | Forbidden page renders for a disallowed role.                                  |
 | unknown path           | Not-found page renders.                                                        |
+| any page, 18:45-19:00 ICT | With the gateway up, the banner warns it stops at 19:00 ICT and counts the minutes; the offline notice replaces it once the probe fails. |
 | Logout                 | Clears session and returns to `/login`.                                        |
 
 Reminder: GHN status is backend-owned — the frontend never calls GHN directly and never

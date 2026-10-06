@@ -1,7 +1,8 @@
 # Known Risks & Gaps
 
 Living list of current risks and gaps. Item numbers are **stable** — other docs cite them
-(`.ai/project.md` cites 6, 14 and 19), so never renumber. Resolved items are compacted into
+(`.ai/project.md` cites 6, 14, 19 and 21-27), so never renumber. A new item takes the
+next number after the highest one in **either** section — 27 was once issued twice. Resolved items are compacted into
 the closing section: one line each, kept only for the rule they encode.
 
 > Also check `../.agent-local/frontend-handoff-ghn.md` (backend → GHN console inbox,
@@ -88,7 +89,11 @@ Format per item: **Risk -> Impact -> Current status -> Suggested fix -> Owner/ar
   never infer it from history wording (see item 6).
 - **Owner/area:** Frontend sync + demo controls.
 
-## 27. `/history` is not an audit log
+## 28. `/history` is not an audit log
+
+> Numbered 27 from 2026-09-11 until 2026-10-06, when the gateway-offline item (Resolved
+> §27, cited by `.ai/project.md`, `src/lib/gateway-schedule.ts` and the 2026-09-21
+> CHANGELOG entry) was found sharing the number. This item had no citations, so it moved.
 
 - **Risk:** The nav reads "Action History", but there is no global shipping-history endpoint —
   history is per order (`GET .../orders/:id/history`). The page lists the 50 most recently
@@ -220,3 +225,6 @@ is in `handoff/CHANGELOG.md` under the matching date.
       signed-out visitor in. The sample rows never enter the React Query cache, the screen
       exposes no action control, and it labels itself as sample data; those three together
       are what keep it clear of "the frontend never invents a status". Keep them.
+    - `useGatewayClosingSoon` (added 2026-10-06) warns from 18:45 ICT while the probe still
+      says `online`. It reads the **client clock** on a 30s local timer and sends nothing —
+      the same rule as the probe: no loop may ever reach a GHN route.

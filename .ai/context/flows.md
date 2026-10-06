@@ -35,8 +35,13 @@ Cross-references: `.ai/context/auth.md`, `.ai/context/data-fetching.md`,
   1. App shell (`GhnAdminShell` = `GhnSidebar` + `GhnTopbar`) wraps protected routes.
   2. `/dashboard` fetches gateway shipment data and renders stat cards + status distribution.
      Both count the fetched page, not the queue, so when `total` exceeds it the counts carry
-     a `+` and name the window (risks 25). Never present them as queue totals.
-  3. `/shipments` fetches paginated gateway data with search/status filters; rows link to
+     a `+` and name the window (risks 25). Never present them as queue totals. The
+     "Needs attention" card links `delivery_fail`/`exception`/`damage`/`lost` to the
+     filtered list; it counts the current status, the list matches any order that ever
+     recorded it, and both say so.
+  3. `/shipments` fetches paginated gateway data with search/status filters held in the URL
+     (Back from a detail page and a shared link restore the view; unknown values are
+     dropped, cleared ones omitted — GHN-ENUM-01); rows link to
      `/shipments/[orderId]`.
   4. `/shipments/[orderId]` fetches detail + history and renders receiver/payment/GHN
      detail, timeline, sync control, available carrier actions, waybill edits, and
