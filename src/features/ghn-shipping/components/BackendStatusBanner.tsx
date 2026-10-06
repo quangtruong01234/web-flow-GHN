@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { useGatewayClosingSoon } from "@/hooks/useGatewayClosingSoon";
 import { useGatewayHealth } from "@/hooks/useGatewayHealth";
 
 /**
@@ -17,11 +18,33 @@ import { useGatewayHealth } from "@/hooks/useGatewayHealth";
  *
  * Kept out of the sticky layer on purpose: `GhnAdminShell` already sticks its
  * sidebar and topbar at `top-0`, and a second sticky strip would overlap them.
+ *
+ * In the last minutes before the scheduled stop, while the gateway still
+ * answers, it warns instead: an operator mid-way through a COD or receiver edit
+ * would otherwise lose it to a network error with no explanation.
  */
 export function BackendStatusBanner() {
-  const { isOffline } = useGatewayHealth();
+  const { status, isOffline } = useGatewayHealth();
+  const minutesUntilClose = useGatewayClosingSoon();
 
-  if (!isOffline) return null;
+  if (!isOffline) {
+    if (status !== "online" || minutesUntilClose === null) return null;
+    return (
+      <div
+        role="status"
+        className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-amber-900"
+      >
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-x-3 text-xs leading-5">
+          <Icon name="info" size={15} className="text-amber-700" />
+          <p className="min-w-0">
+            Backend is scheduled to stop at 19:00 ICT (UTC+7), in about{" "}
+            {minutesUntilClose} min. Finish any edit in progress — anything sent
+            after it stops will fail.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const guideUrl = process.env.NEXT_PUBLIC_DEMO_GUIDE_URL?.trim();
 
