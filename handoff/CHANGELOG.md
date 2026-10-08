@@ -10,6 +10,26 @@ context if relevant).
 
 ---
 
+### 2026-10-08 — `/sweep`: demo picker re-sent the status it had just applied
+
+From `frontend-handoff-ghn.md` → GHN-UI-NITS-1008, finding 8 (the rest of that entry is
+still open). FE only.
+
+- **Bug.** `DemoStatusControl` kept the pick in `useState` and filtered the order's current
+  GHN status out of the options. Once an Apply landed, the applied status left the list, the
+  controlled `<select>` fell back to showing "Ready to pick", and the next Apply re-sent the
+  stale value — including `delivery_fail`, the buyer-notifying path (risks 23), with its
+  warning still on screen under an unrelated option.
+- **Fix.** `ShipmentDetail.tsx` derives `selected`: the stored pick while it is still
+  selectable, otherwise `defaultDemoTarget(data.ghnStatus)`. The `<select>`, the
+  delivery-fail warning and the request body all read it, so they cannot disagree after any
+  status change (Apply, sync or refetch). A derivation, not a `key` remount, so the mutation's
+  success toast is never dropped by an unmount.
+- **Test.** `ShipmentDetail.test.tsx` "moves the demo pick on once the order reaches it" —
+  fails on the old code (select read `ready_to_pick`). 172 tests / 24 suites.
+- **Runtime verification pending:** the post-build dev server on 3013 needs a restart, and
+  the check itself needs one real demo Apply on a dev order.
+
 ### 2026-10-06 — `/sweep`: risks numbering collision fixed; backlog otherwise clear
 
 Docs only. Both backlog sources read in full: `frontend-handoff-ghn.md` **Open** is empty

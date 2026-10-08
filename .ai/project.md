@@ -99,7 +99,7 @@ Treat every rule in those files as active project guidance.
     a hint only and never syncs.
   - None of these adds a loop over a GHN route (risks.md item 23).
 - Validation baseline: `npm.cmd run lint`, `npm.cmd run build`, `npx.cmd tsc --noEmit`,
-  `npm.cmd test` (Jest, 171 tests / 24 suites), `npx.cmd playwright test` (21 specs).
+  `npm.cmd test` (Jest, 172 tests / 24 suites), `npx.cmd playwright test` (21 specs).
 
 ## Next task order
 
