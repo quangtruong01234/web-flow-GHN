@@ -583,10 +583,16 @@ function DemoStatusControl({
   const selectableStatuses = GHN_STATUS_ORDER.filter(
     (status) => status !== data.ghnStatus,
   );
+  // Once the order reaches `target` (this Apply, a sync, a refetch), it drops out
+  // of the options and the <select> would display the first one while Apply
+  // re-sent the stale value. Derive the pick so screen, warning and request agree.
+  const selected = selectableStatuses.includes(target)
+    ? target
+    : defaultDemoTarget(data.ghnStatus);
 
   const onApply = () => {
     demo.mutate(
-      { orderId: data.orderId, body: { ghnStatus: target } },
+      { orderId: data.orderId, body: { ghnStatus: selected } },
       {
         onSuccess: (result) => {
           const moved = result.previousStatus !== result.newStatus;
@@ -621,7 +627,7 @@ function DemoStatusControl({
        * notification a genuine failed attempt would — once per order, deduped
        * on shipping history. Only the carrier call is simulated.
        */}
-      {target === "delivery_fail" ? (
+      {selected === "delivery_fail" ? (
         <p className="text-xs leading-5 text-amber-800">
           Heads up: the buyer is notified for real. A first failed delivery
           attempt sends them an in-app notification, demo or not.
@@ -630,7 +636,7 @@ function DemoStatusControl({
       <Field label="Set GHN status" htmlFor="demo-ghn-status">
         <Select
           id="demo-ghn-status"
-          value={target}
+          value={selected}
           onChange={(e) => setTarget(e.target.value as GhnStatus)}
           disabled={!userMayAct || demo.isPending}
         >

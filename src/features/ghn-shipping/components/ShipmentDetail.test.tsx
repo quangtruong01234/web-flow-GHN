@@ -475,6 +475,45 @@ describe("ShipmentDetail", () => {
     expect(screen.getByText(/the buyer is notified for real/i)).toBeInTheDocument();
   });
 
+  // GHN-UI-NITS-1008 #8: once the order reaches the picked status it leaves the
+  // options. The <select> then showed "Ready to pick" while Apply re-sent the
+  // status just applied — with `delivery_fail`, through the buyer-notifying path.
+  it("moves the demo pick on once the order reaches it", async () => {
+    process.env.NEXT_PUBLIC_GHN_DEMO_MODE = "true";
+    const detailAt = (ghnStatus: "delivering" | "delivery_fail") =>
+      ({
+        data: shipmentDetailView({ ghnStatus, rawGhnStatus: ghnStatus }),
+        isPending: false,
+        isError: false,
+        refetch: jest.fn(),
+      }) as unknown as ReturnType<typeof useShipmentDetail>;
+    useShipmentDetailMock.mockReturnValue(detailAt("delivering"));
+
+    const { rerender } = render(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+    await userEvent.selectOptions(
+      screen.getByLabelText(/set ghn status/i),
+      "delivery_fail",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Apply demo status/i }));
+    expect(demoMutateMock).toHaveBeenLastCalledWith(
+      { orderId: ORDER_PUBLIC_ID, body: { ghnStatus: "delivery_fail" } },
+      expect.any(Object),
+    );
+
+    // The invalidated detail refetches with the applied status.
+    useShipmentDetailMock.mockReturnValue(detailAt("delivery_fail"));
+    rerender(<ShipmentDetail orderId={ORDER_PUBLIC_ID} />);
+
+    expect(screen.getByLabelText(/set ghn status/i)).toHaveValue("waiting_to_return");
+    expect(screen.queryByText(/the buyer is notified for real/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Apply demo status/i }));
+    expect(demoMutateMock).toHaveBeenLastCalledWith(
+      { orderId: ORDER_PUBLIC_ID, body: { ghnStatus: "waiting_to_return" } },
+      expect.any(Object),
+    );
+  });
+
   it("shows demo-disabled 403 as environment feedback", async () => {
     process.env.NEXT_PUBLIC_GHN_DEMO_MODE = "true";
     demoMutateMock.mockImplementation((_input, options) => {
